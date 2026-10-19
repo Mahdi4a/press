@@ -49,3 +49,23 @@ def partner_amount(amount: float, from_currency: str | None, to_currency: str | 
 	if to_currency == USD:
 		return amount / INR_PER_USD_PARTNER
 	return amount * INR_PER_USD_PARTNER
+
+
+def ensure_toman_currency():
+	"""Create the Toman Currency record, or enable it. A new site has none, since patches do not run on install."""
+	import frappe
+
+	if frappe.db.exists("Currency", IRT):
+		frappe.db.set_value("Currency", IRT, "enabled", 1)
+		return
+
+	frappe.get_doc(
+		{
+			"doctype": "Currency",
+			"currency_name": IRT,
+			"enabled": 1,
+			"symbol": SYMBOLS[IRT],
+			"symbol_on_right": 1,
+			"number_format": "#,###",
+		}
+	).insert(ignore_permissions=True)

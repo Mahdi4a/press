@@ -4,8 +4,11 @@
 
 import frappe
 
+from press.utils.currency import ensure_toman_currency
+
 
 def after_install():
+	ensure_toman_currency()
 	create_administrator_team()
 	create_default_cluster()
 

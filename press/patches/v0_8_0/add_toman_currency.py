@@ -6,6 +6,7 @@ so they can be adjusted by hand afterwards. Only plans without a Toman price are
 
 import frappe
 
+from press.utils.currency import ensure_toman_currency
 from press.utils.gateway_settings import get_toman_per_usd
 
 PLAN_DOCTYPES = (
@@ -41,7 +42,7 @@ def set_price(doctype: str, name: str, usd: float, rate: int):
 
 
 def execute():
-	create_currency()
+	ensure_toman_currency()
 	rate = get_toman_per_usd()
 
 	for doctype in PLAN_DOCTYPES:
@@ -68,23 +69,6 @@ def seed_team_tiers(rate: int):
 				toman = to_toman(tier.get(usd_field), rate)
 				if toman is not None:
 					frappe.db.set_value("Team Tier", tier.name, irt_field, toman, update_modified=False)
-
-
-def create_currency():
-	if frappe.db.exists("Currency", "IRT"):
-		frappe.db.set_value("Currency", "IRT", "enabled", 1)
-		return
-
-	frappe.get_doc(
-		{
-			"doctype": "Currency",
-			"currency_name": "IRT",
-			"enabled": 1,
-			"symbol": "Toman",
-			"symbol_on_right": 1,
-			"number_format": "#,###",
-		}
-	).insert(ignore_permissions=True)
 
 
 def bill_iranian_teams_in_toman(rate: int):
