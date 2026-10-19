@@ -70,7 +70,7 @@
 									"
 									@click="
 										$resources.verify2FA.submit({
-											user: email,
+											user: loginEmail,
 											totp_code: twoFactorCode,
 										})
 									"
@@ -108,7 +108,7 @@
 									"
 									@click="
 										$resources.recover2FA.submit({
-											user: email,
+											user: loginEmail,
 											recovery_code: twoFactorRecoveryCode,
 										})
 									"
@@ -124,9 +124,9 @@
 							<!-- Forgot Password Section -->
 							<template v-else-if="hasForgotPassword">
 								<FormControl
-									label="Email"
-									type="email"
-									placeholder="johndoe@mail.com"
+									label="Email or mobile number"
+									type="text"
+									placeholder="johndoe@mail.com or 09121234567"
 									autocomplete="email"
 									v-model="email"
 									variant="outline"
@@ -155,8 +155,8 @@
 							<!-- Login Section -->
 							<template v-else-if="isLogin">
 								<FormControl
-									label="Email"
-									placeholder="johndoe@mail.com"
+									label="Email or mobile number"
+									placeholder="johndoe@mail.com or 09121234567"
 									autocomplete="email"
 									v-model="email"
 									:disabled="otpSent && !usePassword"
@@ -277,9 +277,9 @@
 							<!-- Signup Section -->
 							<template v-else>
 								<FormControl
-									label="Email"
-									type="email"
-									placeholder="johndoe@mail.com"
+									label="Email or mobile number"
+									type="text"
+									placeholder="johndoe@mail.com or 09121234567"
 									autocomplete="email"
 									variant="outline"
 									v-model="email"
@@ -291,7 +291,7 @@
 									variant="solid"
 									type="submit"
 								>
-									Sign up with email
+									Sign up
 								</Button>
 							</template>
 
@@ -337,9 +337,9 @@
 					<div v-else-if="otpRequested">
 						<form class="flex flex-col">
 							<FormControl
-								label="Email"
-								type="email"
-								placeholder="johndoe@mail.com"
+								label="Email or mobile number"
+								type="text"
+								placeholder="johndoe@mail.com or 09121234567"
 								autocomplete="email"
 								v-model="email"
 								variant="outline"
@@ -476,6 +476,7 @@ import { getToastErrorMessage } from '../utils/toast';
 import { h } from 'vue';
 import { call } from 'frappe-ui';
 import CustomToast from '../components/CustomToast.vue';
+import { toLoginEmail } from '../utils/mobile';
 
 export default {
 	name: 'Signup',
@@ -556,7 +557,7 @@ export default {
 			return {
 				url: 'press.api.account.signup',
 				params: {
-					email: this.email,
+					email: this.loginEmail,
 					referrer: this.getReferrerIfAny(),
 					product: this.$route.query.product,
 					aid: getAnonymousId(),
@@ -565,7 +566,7 @@ export default {
 					this.account_request = account_request;
 					this.otpRequested = true;
 					this.otpResendCountdown = 30;
-					toast.success('Verification code sent to your email');
+					toast.success('Verification code sent');
 				},
 				onError: (error) => {
 					if (error?.exc_type !== 'ValidationError') {
@@ -610,7 +611,7 @@ export default {
 				onSuccess() {
 					this.otp = '';
 					this.otpResendCountdown = 30;
-					toast.success('Verification code sent to your email');
+					toast.success('Verification code sent');
 				},
 				onError(err) {
 					toast.error(
@@ -623,13 +624,13 @@ export default {
 			return {
 				url: 'press.api.account.send_otp',
 				params: {
-					email: this.email,
+					email: this.loginEmail,
 				},
 				onSuccess() {
 					this.otpSent = true;
 					this.otpResendCountdown = 30;
 					toast.success(
-						'If an account exists for this email, we sent it a verification code',
+						'If an account exists for this email or mobile number, we sent it a verification code',
 					);
 				},
 				onError(err) {
@@ -643,7 +644,7 @@ export default {
 			return {
 				url: 'press.api.account.verify_otp_and_login',
 				params: {
-					email: this.email,
+					email: this.loginEmail,
 					otp: this.otp,
 				},
 				onSuccess(res) {
@@ -717,7 +718,7 @@ export default {
 						}
 					} else if (this.hasForgotPassword) {
 						await this.$resources.resetPassword.submit({
-							email: this.email,
+							email: this.loginEmail,
 							totp_code: this.twoFactorCode,
 						});
 					}
@@ -776,7 +777,7 @@ export default {
 
 		async checkTwoFactorAndLogin() {
 			await this.$resources.is2FAEnabled.submit(
-				{ user: this.email },
+				{ user: this.loginEmail },
 				{
 					onSuccess: async (two_factor_enabled) => {
 						if (two_factor_enabled) {
@@ -797,7 +798,7 @@ export default {
 
 		async checkTwoFactorAndResetPassword() {
 			await this.$resources.is2FAEnabled.submit(
-				{ user: this.email },
+				{ user: this.loginEmail },
 				{
 					onSuccess: async (two_factor_enabled) => {
 						if (two_factor_enabled) {
@@ -810,7 +811,7 @@ export default {
 							});
 						} else {
 							await this.$resources.resetPassword.submit({
-								email: this.email,
+								email: this.loginEmail,
 							});
 						}
 					},
@@ -820,7 +821,7 @@ export default {
 
 		verifyOTPAndLogin() {
 			this.$resources.is2FAEnabled.submit(
-				{ user: this.email },
+				{ user: this.loginEmail },
 				{
 					onSuccess: async (two_factor_enabled) => {
 						if (two_factor_enabled) {
@@ -846,7 +847,7 @@ export default {
 		async login() {
 			await this.$session.login.submit(
 				{
-					email: this.email,
+					email: this.loginEmail,
 					password: this.password,
 				},
 				{
@@ -919,6 +920,9 @@ export default {
 				this.$route.query.two_factor &&
 				this.on2FARecovery
 			);
+		},
+		loginEmail() {
+			return toLoginEmail(this.email);
 		},
 		emailDomain() {
 			return this.email?.includes('@') ? this.email?.split('@').pop() : '';

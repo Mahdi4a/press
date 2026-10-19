@@ -9,6 +9,7 @@ import frappe
 SIGNUP = "signup"
 LOGIN = "login"
 TWO_FACTOR_RECOVERY = "2fa-recovery"
+ADD_CONTACT = "add-contact"
 
 # How long a code stays good for. A signup code is mailed alongside the
 # setup-account link, so it lasts as long as that link does — see
@@ -18,6 +19,7 @@ EXPIRES_IN = {
 	SIGNUP: 24 * 60 * 60,
 	LOGIN: 10 * 60,
 	TWO_FACTOR_RECOVERY: 10 * 60,
+	ADD_CONTACT: 10 * 60,
 }
 
 # How long before another code may be sent to the same inbox.

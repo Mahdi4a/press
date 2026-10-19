@@ -38,6 +38,7 @@ from press.utils import (
 from press.utils import otp as otp_purpose
 from press.utils import user as user_utils
 from press.utils.otp import OneTimePassword
+from press.utils.sms import mobile_from_email, normalize_mobile, send_otp_to_mobile, user_for_mobile
 from press.utils.telemetry import capture
 
 if TYPE_CHECKING:
@@ -59,6 +60,10 @@ def signup(
 	if exists and not enabled:
 		frappe.throw(_("Account {0} has been deactivated").format(email))
 	elif exists and enabled:
+		frappe.throw(_("Account {0} is already registered").format(email))
+
+	# A mobile number belongs to one account, even once its placeholder email has been replaced
+	if (mobile := mobile_from_email(email)) and user_for_mobile(mobile):
 		frappe.throw(_("Account {0} is already registered").format(email))
 
 	account_request = frappe.db.get_value(
@@ -87,10 +92,16 @@ def signup(
 			}
 		).insert(ignore_permissions=True)
 		account_request = account_request_doc.name
-	elif aid:
-		# Reusing a prior request (same email/referrer/product) — keep the latest aid
-		# so a returning visitor's pre-signup browsing still stitches.
-		frappe.db.set_value("Account Request", account_request, "pulse_anonymous_id", aid)
+	else:
+		if aid:
+			# Reusing a prior request (same email/referrer/product) — keep the latest aid
+			# so a returning visitor's pre-signup browsing still stitches.
+			frappe.db.set_value("Account Request", account_request, "pulse_anonymous_id", aid)
+
+		# The page says a code was sent, so send one even though the request already exists
+		account_request_doc = frappe.get_doc("Account Request", account_request)
+		if not account_request_doc.signup_otp.issued_recently:
+			account_request_doc.resend_verification_email()
 
 	return account_request
 
@@ -135,12 +146,28 @@ def canonical_login_email(email: str) -> str:
 	return email.strip().lower()
 
 
+def user_for_login_identifier(identifier: str) -> str:
+	"""The user behind what was typed to log in.
+
+	A mobile number travels as its placeholder email. The account that owns the number
+	may have been given a real email since, so look it up by the number.
+	"""
+	mobile = mobile_from_email(identifier) if isinstance(identifier, str) else None
+	return (user_for_mobile(mobile) if mobile else None) or identifier
+
+
+def resolve_login_user(identifier: str) -> tuple[str, str | None]:
+	"""(user, mobile to text the code to). The mobile is None when a real email was typed."""
+	identifier = canonical_login_email(identifier)
+	return user_for_login_identifier(identifier), mobile_from_email(identifier)
+
+
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=5, seconds=60 * 60)
 def verify_otp_and_login(email: str, otp: str):
 	from frappe.auth import get_login_attempt_tracker
 
-	email = canonical_login_email(email)
+	email, _mobile = resolve_login_user(email)
 	ip_tracker = get_login_attempt_tracker(frappe.local.request_ip)
 	code = OneTimePassword(otp_purpose.LOGIN, email)
 
@@ -175,7 +202,7 @@ def resend_otp(account_request: str):
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=5, seconds=60)
 def send_otp(email: str, for_2fa_keys: bool = False):
-	email = canonical_login_email(email)
+	email, mobile = resolve_login_user(email)
 	purpose = otp_purpose.TWO_FACTOR_RECOVERY if for_2fa_keys else otp_purpose.LOGIN
 	code = OneTimePassword(purpose, email)
 	throttle_otp(code)
@@ -186,7 +213,7 @@ def send_otp(email: str, for_2fa_keys: bool = False):
 		code.hold_resend()
 		return
 
-	send_otp_mail(email, code.generate(), for_login=not for_2fa_keys)
+	send_otp_mail(email, code.generate(), for_login=not for_2fa_keys, mobile=mobile)
 
 
 def throttle_otp(code: OneTimePassword):
@@ -194,7 +221,8 @@ def throttle_otp(code: OneTimePassword):
 		frappe.throw(f"Please wait for {otp_purpose.RESEND_AFTER} seconds before requesting a new OTP")
 
 
-def send_otp_mail(email: str, otp: str, for_login: bool = True):
+def send_otp_mail(email: str, otp: str, for_login: bool = True, mobile: str | None = None):
+	"""Send the code by SMS when `mobile` is given or the address is a mobile placeholder, else by email."""
 	if frappe.conf.developer_mode and frappe.local.dev_server:
 		print(f"Login OTP for {email}:" if for_login else f"OTP to view 2FA recovery codes for {email}:")
 		print(otp)
@@ -202,6 +230,11 @@ def send_otp_mail(email: str, otp: str, for_login: bool = True):
 		return
 
 	if frappe.flags.in_test:
+		return
+
+	mobile = mobile or mobile_from_email(email)
+	if mobile:
+		send_otp_to_mobile(mobile, otp)
 		return
 
 	if for_login:
@@ -238,10 +271,23 @@ def setup_account(  # noqa: C901
 	oauth_domain=False,
 	site_domain=None,
 	share_details_consent=False,
+	contact_email=None,
+	contact_email_otp=None,
 ):
 	account_request = get_account_request_from_key(key)
 	if not account_request:
 		frappe.throw("Invalid or Expired Key")
+
+	# Someone who signed up with a mobile number may give a real email now. Once the code
+	# sent to it is confirmed, the account is created under that email instead of the
+	# internal placeholder, and the mobile number is kept on the user.
+	signup_mobile = mobile_from_email(account_request.email)
+	if signup_mobile and contact_email:
+		contact_email = _new_real_email(contact_email)
+		code = OneTimePassword(otp_purpose.ADD_CONTACT, f"{account_request.name}:{contact_email}")
+		if not code.consume(contact_email_otp or ""):
+			frappe.throw("Invalid OTP. Please try again.")
+		account_request.email = contact_email
 
 	if not user_exists:
 		if not first_name:
@@ -292,6 +338,8 @@ def setup_account(  # noqa: C901
 			phone=phone,
 			user_exists=bool(user_exists),
 		)
+		if signup_mobile and contact_email:
+			frappe.db.set_value("User", email, "mobile_no", signup_mobile)
 		if invited_by_parent_team:
 			doc = frappe.get_doc("Team", account_request.invited_by)
 			doc.append("child_team_members", {"child_team": team})
@@ -402,6 +450,112 @@ def login_using_key(key):
 			http_status_code=403,
 			indicator_color="red",
 		)
+
+
+def _new_real_email(value: str) -> str:
+	"""A real email address that no account uses yet."""
+	if not isinstance(value, str):
+		frappe.throw(_("Invalid Email"))
+	email = value.strip().lower()
+	frappe.utils.validate_email_address(email, True)
+	if mobile_from_email(email) or frappe.db.exists("User", email):
+		frappe.throw(_("This email is already used by another account"))
+	return email
+
+
+@frappe.whitelist(allow_guest=True)
+@rate_limit(limit=5, seconds=60 * 60)
+def send_setup_email_otp(key: str, email: str):
+	"""While setting up an account made with a mobile number, send a code to the email given."""
+	account_request = get_account_request_from_key(key)
+	if not account_request or not mobile_from_email(account_request.email):
+		frappe.throw("Invalid or Expired Key")
+
+	email = _new_real_email(email)
+	code = OneTimePassword(otp_purpose.ADD_CONTACT, f"{account_request.name}:{email}")
+	throttle_otp(code)
+	send_otp_mail(email, code.generate())
+
+
+def _checked_new_contact(kind: str, value: str) -> str:
+	"""The email or mobile number to attach to the signed-in user, once it is known to be free."""
+	user = frappe.session.user
+	if user == "Guest":
+		frappe.throw("Please log in first", frappe.AuthenticationError)
+
+	if kind == "mobile":
+		mobile = normalize_mobile(value)
+		owner = user_for_mobile(mobile)
+		if owner and owner != user:
+			frappe.throw(_("This mobile number is already used by another account"))
+		return mobile
+
+	if kind == "email":
+		# Only an account created with a mobile number has a placeholder to replace
+		if not mobile_from_email(user):
+			frappe.throw(_("Your account already has an email address"))
+		return _new_real_email(value)
+
+	frappe.throw(_("Invalid contact type"))
+	return ""
+
+
+@frappe.whitelist()
+def get_contact_info():
+	"""The real email and mobile number of the signed-in user. The placeholder email is not an email."""
+	user = frappe.session.user
+	return {
+		"email": None if mobile_from_email(user) else user,
+		"mobile_no": frappe.db.get_value("User", user, "mobile_no"),
+	}
+
+
+@frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
+def request_contact_otp(kind: str, value: str):
+	"""Send a code to the email or mobile number the user wants to add to their account."""
+	value = _checked_new_contact(kind, value)
+	code = OneTimePassword(otp_purpose.ADD_CONTACT, f"{frappe.session.user}:{value}")
+	throttle_otp(code)
+
+	otp = code.generate()
+	if kind == "mobile":
+		send_otp_to_mobile(value, otp)
+	else:
+		send_otp_mail(value, otp)
+
+
+@frappe.whitelist()
+@rate_limit(limit=5, seconds=60 * 60)
+def verify_contact_otp(kind: str, value: str, otp: str):
+	"""Attach the verified email or mobile number to the signed-in user.
+
+	Adding the first real email renames the user, so Team and the other links follow,
+	and signs the user in again under the new name.
+	"""
+	user = frappe.session.user
+	value = _checked_new_contact(kind, value)
+	if not OneTimePassword(otp_purpose.ADD_CONTACT, f"{user}:{value}").consume(otp):
+		frappe.throw("Invalid OTP. Please try again.")
+
+	if kind == "mobile":
+		frappe.db.set_value("User", user, "mobile_no", value)
+		return {"user": user}
+
+	from frappe.model.rename_doc import rename_doc
+
+	# Renaming a user is not something a Press user may do, so do it on their behalf,
+	# the way setup_account does for signup
+	frappe.set_user("Administrator")
+	try:
+		rename_doc("User", user, value, force=True, ignore_permissions=True)
+		# The placeholder is gone, and its email block with it
+		frappe.db.delete("Email Unsubscribe", {"email": user})
+	except Exception:
+		frappe.set_user(user)
+		raise
+	frappe.local.login_manager.login_as(value)
+	return {"user": value}
 
 
 @frappe.whitelist()
@@ -1274,12 +1428,14 @@ def get_user_ssh_keys():
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=20, seconds=60 * 60)
 def is_2fa_enabled(user: str) -> bool:
+	user = user_for_login_identifier(user)
 	return bool(frappe.db.get_value("User 2FA", user, "enabled"))
 
 
 @frappe.whitelist(allow_guest=True)
 @rate_limit(limit=5, seconds=60 * 60)
 def verify_2fa(user, totp_code):
+	user = user_for_login_identifier(user)
 	user_totp_secret = get_decrypted_password("User 2FA", user, "totp_secret")
 	verified = pyotp.TOTP(user_totp_secret).verify(totp_code)
 
@@ -1399,6 +1555,7 @@ def set_2fa_recovery_code_reminders(enabled: bool | str):
 @rate_limit(limit=5, seconds=60 * 60)
 def recover_2fa(user: str, recovery_code: str):
 	"""Recover 2FA using a recovery code."""
+	user = user_for_login_identifier(user)
 	# Get the User 2FA document.
 	two_fa = frappe.get_doc("User 2FA", user)
 

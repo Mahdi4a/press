@@ -66,6 +66,7 @@
 								</div>
 							</template>
 							<FormControl
+								v-if="!email?.endsWith('@phone.press.local')"
 								label="Email"
 								type="text"
 								:modelValue="email"
@@ -81,14 +82,55 @@
 								variant="outline"
 								required
 							/>
-							<PhoneInput
+							<!-- A mobile signup already verified this number, so it is not editable -->
+							<div
 								v-if="!isInvitation"
-								label="Phone"
-								v-model="phoneNumber"
-								:countries="countries"
-								:country="country"
-								placeholder="9876543210"
-							/>
+								:class="{
+									'pointer-events-none opacity-70':
+										email?.endsWith('@phone.press.local'),
+								}"
+							>
+								<PhoneInput
+									label="Phone"
+									v-model="phoneNumber"
+									:countries="countries"
+									:country="country"
+									placeholder="9876543210"
+								/>
+							</div>
+							<!-- A mobile signup may give an email now; it is optional and confirmed with a code -->
+							<template v-if="email?.endsWith('@phone.press.local')">
+								<FormControl
+									label="Email (optional)"
+									type="text"
+									placeholder="johndoe@mail.com"
+									v-model="contactEmail"
+									variant="outline"
+									:disabled="contactEmailCodeSent"
+								/>
+								<Button
+									v-if="contactEmail && !contactEmailCodeSent"
+									class="w-full"
+									type="button"
+									:loading="$resources.sendContactEmailOtp.loading"
+									@click="$resources.sendContactEmailOtp.submit()"
+								>
+									Send verification code
+								</Button>
+								<FormControl
+									v-if="contactEmailCodeSent"
+									label="Email verification code"
+									placeholder="123456"
+									v-model="contactEmailOtp"
+									variant="outline"
+								/>
+								<ErrorMessage
+									:message="$resources.sendContactEmailOtp.error"
+								/>
+								<p class="text-xs text-ink-gray-5">
+									Leave it empty to skip. You can add it later in Settings → Profile.
+								</p>
+							</template>
 						</div>
 						<ErrorMessage
 							class="mt-4"
@@ -198,9 +240,21 @@ export default {
 			detailsSharedProducts,
 			shareDetailsConsent: false,
 			phoneNumber: '',
+			contactEmail: '',
+			contactEmailOtp: '',
+			contactEmailCodeSent: false,
 		};
 	},
 	resources: {
+		sendContactEmailOtp() {
+			return {
+				url: 'press.api.account.send_setup_email_otp',
+				params: { key: this.requestKey, email: this.contactEmail },
+				onSuccess() {
+					this.contactEmailCodeSent = true;
+				},
+			};
+		},
 		validateRequestKey() {
 			return {
 				url: 'press.api.account.validate_request_key',
@@ -214,6 +268,10 @@ export default {
 				onSuccess(res) {
 					if (res && res.email) {
 						this.email = res.email;
+						// A mobile signup: the number is the one the code was sent to
+						if (res.email.endsWith('@phone.press.local')) {
+							this.phoneNumber = `+98-${res.email.split('@')[0].slice(1)}`;
+						}
 						this.firstName = res.first_name;
 						this.lastName = res.last_name;
 						this.country = res.country;
@@ -245,6 +303,8 @@ export default {
 					last_name: this.lastName,
 					country: this.country,
 					phone: this.phoneNumber || null,
+					contact_email: this.contactEmail || null,
+					contact_email_otp: this.contactEmailOtp || null,
 					is_invitation: this.isInvitation,
 					user_exists: this.userExists,
 					invited_by_parent_team: this.invitedByParentTeam,

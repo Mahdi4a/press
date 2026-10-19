@@ -30,7 +30,13 @@
 				<h3 class="text-base font-semibold">
 					{{ user.first_name }} {{ user.last_name }}
 				</h3>
-				<p class="mt-1 text-base text-ink-gray-6">{{ user.email }}</p>
+				<p class="mt-1 text-base text-ink-gray-6">
+					{{
+						user.email?.endsWith('@phone.press.local')
+							? user.email.split('@')[0]
+							: user.email
+					}}
+				</p>
 			</div>
 			<div class="ml-auto">
 				<Button icon-left="edit" @click="showProfileEditDialog = true">
@@ -373,7 +379,12 @@ export default {
 		},
 		deactivateAccount(disableAccount2FACode) {
 			const currency = this.$team.doc.currency
-			const minAmount = currency === 'INR' ? 410 : 5
+			const minAmount =
+				currency === 'INR'
+					? 410
+					: currency === 'IRT'
+						? this.$team.doc.minimum_credit
+						: 5
 			if (this.draftInvoice && this.draftInvoice.amount_due > minAmount) {
 				const finalizeInvoicesDialog = defineAsyncComponent(
 					() => import('../../billing/FinalizeInvoicesDialog.vue'),
@@ -406,7 +417,7 @@ export default {
 						confirmDialog({
 							title: 'Clear Unpaid Invoice',
 							message: `You have an unpaid invoice of ${
-								invoice.currency === 'INR' ? '₹' : '$'
+								this.$format.currencySymbol(invoice.currency)
 							} ${
 								invoice.amount_due
 							}. Please clear it before disabling the account.`,

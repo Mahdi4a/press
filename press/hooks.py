@@ -174,6 +174,7 @@ has_permission = {
 # Hook on document methods and events
 
 doc_events = {
+	"User": {"after_insert": "press.utils.sms.setup_mobile_user"},
 	"Stripe Webhook Log": {
 		"after_insert": [
 			"press.press.doctype.invoice.stripe_webhook_handler.handle_stripe_webhook_events",

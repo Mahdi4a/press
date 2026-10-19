@@ -14,6 +14,7 @@ from press.guards import settings
 from press.utils import disposable_emails, get_country_info, is_valid_email_address, log_error
 from press.utils import otp as otp_purpose
 from press.utils.otp import OneTimePassword
+from press.utils.sms import mobile_from_email, send_otp_to_mobile
 from press.utils.telemetry import capture
 
 
@@ -215,6 +216,10 @@ class AccountRequest(Document):
 			print(f"\nOTP for {self.email}:")
 			print(otp)
 			print()
+			return
+
+		if mobile := mobile_from_email(self.email):
+			send_otp_to_mobile(mobile, otp)
 			return
 
 		subject = f"{otp} - OTP for Frappe Cloud Account Verification"
