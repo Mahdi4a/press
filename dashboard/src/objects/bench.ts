@@ -266,6 +266,7 @@ export function getSitesTab() {
 				'plan.plan_title as plan_title',
 				'plan.price_usd as price_usd',
 				'plan.price_inr as price_inr',
+				'plan.price_irt as price_irt',
 				'cluster.image as cluster_image',
 				'cluster.title as cluster_title',
 			],

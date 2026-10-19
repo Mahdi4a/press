@@ -105,13 +105,28 @@ export function plural(number, singular, plural) {
 	return plural
 }
 
+// The plan column that holds prices in each currency a team can be billed in
+const PRICE_FIELDS = { USD: 'price_usd', INR: 'price_inr', IRT: 'price_irt' }
+const CURRENCY_SYMBOLS = { USD: '$', INR: '₹', IRT: 'Toman' }
+
+export function priceField(currencyCode) {
+	return PRICE_FIELDS[currencyCode] || 'price_usd'
+}
+
+export function currencySymbol(currencyCode) {
+	return CURRENCY_SYMBOLS[currencyCode] || '$'
+}
+
+// A plan's price in the team's own currency
+export function teamPlanPrice(plan) {
+	return plan?.[priceField(getTeam().doc?.currency)]
+}
+
 export function planTitleHourly(plan) {
 	if (plan === undefined) return
 	const $team = getTeam()
-	const india = $team.doc?.currency === 'INR'
-	const priceField = india ? 'price_inr' : 'price_usd'
-	const price =
-		plan?.block_monthly == 1 ? plan[priceField] * 12 : plan[priceField]
+	const field = priceField($team.doc?.currency)
+	const price = plan?.block_monthly == 1 ? plan[field] * 12 : plan[field]
 
 	return price > 0 ? `${userCurrency(pricePerHour(price))}` : plan.plan_title
 }
@@ -119,20 +134,56 @@ export function planTitleHourly(plan) {
 export function planTitle(plan) {
 	if (plan === undefined) return
 	const $team = getTeam()
-	const india = $team.doc?.currency === 'INR'
-	const priceField = india ? 'price_inr' : 'price_usd'
-	const price =
-		plan?.block_monthly == 1 ? plan[priceField] * 12 : plan[priceField]
+	const field = priceField($team.doc?.currency)
+	const price = plan?.block_monthly == 1 ? plan[field] * 12 : plan[field]
 	return price > 0 ? `${userCurrency(price, 0)}` : plan.plan_title
+}
+
+// Iranian teams keep their credit in USD, but see every amount in Toman at the rate
+// set in Press Settings. The server sends the rate only for those teams.
+function tomanRate() {
+	const $team = getTeam()
+	if ($team.doc?.currency !== 'USD') return null
+	return $team.doc?.toman_per_usd || null
+}
+
+// Whether this team's amounts read in Toman, billed in IRT or converted from USD
+export function showsToman() {
+	return getTeam().doc?.currency === 'IRT' || Boolean(tomanRate())
+}
+
+export function toman(usdValue) {
+	const amount = Math.round(Number(usdValue) * tomanRate())
+	return `${amount.toLocaleString('en-US')} Toman`
 }
 
 export function userCurrency(value, fractions = 2) {
 	const $team = getTeam()
 	if (!$team.doc?.currency) return value
+	if (tomanRate() && value !== null && !Number.isNaN(Number(value))) {
+		return toman(value)
+	}
 	return currency(value, $team.doc?.currency, fractions)
 }
 
+// An amount in the given currency; a USD amount shows in Toman for Iranian teams
+export function teamCurrency(value, currencyCode, fractions = 2) {
+	if (
+		currencyCode === 'USD' &&
+		tomanRate() &&
+		value !== null &&
+		!Number.isNaN(Number(value))
+	) {
+		return toman(value)
+	}
+	return currency(value, currencyCode, fractions)
+}
+
 export function currency(value, currency, fractions = 2) {
+	// Toman is not an ISO currency, so Intl cannot format it
+	if (currency === 'IRT') {
+		return `${Math.round(Number(value) || 0).toLocaleString('en-US')} Toman`
+	}
 	return new Intl.NumberFormat('en-US', {
 		style: 'currency',
 		currency,

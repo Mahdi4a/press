@@ -139,7 +139,7 @@
 				<PrepaidCreditsForm
 					v-else
 					:minimumAmount="
-						$team.doc?.currency === 'INR' ? plan.price_inr : plan.price_usd
+						$format.teamPlanPrice(plan)
 					"
 					:type="'Purchase Plan'"
 					:docName="plan.name"

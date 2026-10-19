@@ -6,7 +6,7 @@ import { getTeam } from '../data/team'
 import router from '../router'
 import { confirmDialog, icon, renderDialog } from '../utils/components'
 import { isMobile } from '../utils/device'
-import { date, duration, planTitle, userCurrency } from '../utils/format'
+import { date, duration, planTitle, teamPlanPrice, userCurrency } from '../utils/format'
 import { getQueryParam, setQueryParam } from '../utils/index'
 import { trialDays } from '../utils/site'
 import { getJobsTab } from './common/jobs'
@@ -219,6 +219,7 @@ export default {
 						'plan.plan_title as plan_title',
 						'plan.price_usd as price_usd',
 						'plan.price_inr as price_inr',
+						'plan.price_irt as price_irt',
 						'group.title as group_title',
 						'group.public as group_public',
 						'group.team as group_team',
@@ -305,11 +306,7 @@ export default {
 								}
 								let $team = getTeam()
 								if (row.price_usd > 0) {
-									let india = $team.doc.country == 'India'
-									let formattedValue = userCurrency(
-										india ? row.price_inr : row.price_usd,
-										0,
-									)
+									let formattedValue = userCurrency(teamPlanPrice(row), 0)
 									return `${formattedValue}/mo`
 								}
 								return row.plan_title

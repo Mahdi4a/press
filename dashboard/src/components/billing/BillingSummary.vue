@@ -25,7 +25,11 @@
 						<div>
 							<span>Current billing amount so far is </span>
 							<span class="font-medium text-ink-gray-9">
-								{{ currency }} {{ currentBillingAmount?.toFixed(2) || '0.00' }}
+								{{
+									$format.showsToman()
+										? $format.userCurrency(currentBillingAmount || 0)
+										: `${currency} ${currentBillingAmount?.toFixed(2) || '0.00'}`
+								}}
 							</span>
 						</div>
 					</div>
@@ -42,7 +46,11 @@
 					<lucide-receipt class="h-4 w-4" />
 					<div>
 						<span>Unpaid amount is </span>
-						<span>{{ currency }} {{ unpaidAmount.data?.toFixed(2) }}</span>
+						<span>{{
+							$format.showsToman()
+								? $format.userCurrency(unpaidAmount.data)
+								: `${currency} ${unpaidAmount.data?.toFixed(2)}`
+						}}</span>
 					</div>
 				</div>
 				<div>
@@ -78,7 +86,9 @@ const { currentBillingAmount, upcomingInvoice, unpaidInvoices } =
 const showAddPrepaidCreditsDialog = ref(false);
 const showInvoiceDialog = ref(false);
 
-const currency = computed(() => (team.doc.currency == 'INR' ? '₹' : '$'));
+const currency = computed(
+	() => ({ INR: '₹', IRT: 'Toman' })[team.doc.currency] || '$',
+);
 
 const unpaidAmount = createResource({
 	url: 'press.api.billing.total_unpaid_amount',

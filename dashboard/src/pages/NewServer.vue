@@ -1307,7 +1307,10 @@ export default {
 						((this.$team.doc.currency == 'USD' &&
 							this.$team.doc.balance < 200) ||
 							(this.$team.doc.currency == 'INR' &&
-								this.$team.doc.balance < 16000))
+								this.$team.doc.balance < 16000) ||
+							(this.$team.doc.currency == 'IRT' &&
+								this.$team.doc.balance <
+									this.$team.doc.server_credit_threshold))
 					) {
 						throw new DashboardError(
 							'You need to have $200 worth of credits to create a server.',
@@ -1343,7 +1346,10 @@ export default {
 						((this.$team.doc.currency == 'USD' &&
 							this.$team.doc.balance < 200) ||
 							(this.$team.doc.currency == 'INR' &&
-								this.$team.doc.balance < 16000))
+								this.$team.doc.balance < 16000) ||
+							(this.$team.doc.currency == 'IRT' &&
+								this.$team.doc.balance <
+									this.$team.doc.server_credit_threshold))
 					) {
 						throw new DashboardError(
 							'You need to have $200 worth of credits to create a server.',
@@ -1637,7 +1643,7 @@ export default {
 		},
 		_totalPerMonth() {
 			let currencyField =
-				this.$team.doc.currency == 'INR' ? 'price_inr' : 'price_usd'
+				this.$format.priceField(this.$team.doc.currency)
 			if (this.serverType === 'dedicated') {
 				if (this.unifiedServer) {
 					if (!this.appServerPlan) return 0
@@ -1666,7 +1672,7 @@ export default {
 			if (!this.$team?.doc?.currency) return -1
 			try {
 				let priceField =
-					this.$team.doc.currency === 'INR' ? 'price_inr' : 'price_usd'
+					this.$format.priceField(this.$team.doc.currency)
 				console.log(this.options)
 				return this.options?.storage_plan?.[priceField] || 0
 			} catch (error) {

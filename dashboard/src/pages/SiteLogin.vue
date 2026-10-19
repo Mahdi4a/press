@@ -219,7 +219,7 @@ import { createResource } from 'frappe-ui';
 import LoginBox from '../components/auth/LoginBox.vue';
 import { getToastErrorMessage } from '../utils/toast';
 import { trialDays } from '../utils/site';
-import { userCurrency } from '../utils/format';
+import { teamPlanPrice, userCurrency } from '../utils/format';
 import { useRoute } from 'vue-router';
 import { DashboardError } from '../utils/error';
 
@@ -384,11 +384,7 @@ function verifyOTP() {
 function planTitle(site) {
 	if (site.trial_end_date) return trialDays(site.trial_end_date);
 	if (site.price_usd > 0 && team) {
-		const india = team?.doc?.currency === 'INR';
-		const formattedValue = userCurrency(
-			india ? site.price_inr : site.price_usd,
-			0,
-		);
+		const formattedValue = userCurrency(teamPlanPrice(site), 0);
 		return `${formattedValue}/mo`;
 	}
 	return site.plan_title;

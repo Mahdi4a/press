@@ -107,7 +107,7 @@ export default {
 			if (!this.$team?.doc?.currency) return -1;
 			try {
 				let priceField =
-					this.$team.doc.currency === 'INR' ? 'price_inr' : 'price_usd';
+					this.$format.priceField(this.$team.doc.currency);
 				return (
 					(this.options?.snapshot_plan?.[priceField] || 0) +
 					' ' +

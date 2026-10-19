@@ -373,9 +373,7 @@ export default {
 					plan.price_inr === 0 || plan.price_usd === 0
 						? 'Free'
 						: `${this.$format.userCurrency(
-								this.$team.doc.currency === 'INR'
-									? plan.price_inr
-									: plan.price_usd,
+								this.$format.teamPlanPrice(plan),
 							)}/mo`,
 				sublabel: ' ',
 				features: plan.features.map((f) => ({

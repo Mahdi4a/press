@@ -132,6 +132,7 @@ const currencyPrefix = computed(() => {
 	const c = props.form.revenue_currency
 	if (c === 'USD') return '$'
 	if (c === 'EUR') return '€'
+	if (c === 'IRT') return 'Toman'
 	return '₹'
 })
 

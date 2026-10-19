@@ -10,7 +10,10 @@ import {
 const team = inject('team')
 const onboarding = usePartnerOnboarding(team)
 const mrrTargetLabel = computed(() =>
-	getPartnerMRRTargetLabel(onboarding.form.registered_country),
+	getPartnerMRRTargetLabel(
+		onboarding.form.registered_country,
+		onboarding.mrrStatus.value,
+	),
 )
 
 const eligibilityCriteria = computed(() => [

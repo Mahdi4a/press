@@ -9,9 +9,8 @@
 					<div>
 						<span>
 							{{
-								subscription.currency === 'INR'
-									? '₹' + plan.price_inr
-									: '$' + plan.price_usd
+								$format.currencySymbol(subscription.currency) +
+									plan[$format.priceField(subscription.currency)]
 							}}
 							<span class="text-base font-normal text-ink-gray-6">
 								{{ plan.block_monthly === 1 ? '/year' : '/mo' }}

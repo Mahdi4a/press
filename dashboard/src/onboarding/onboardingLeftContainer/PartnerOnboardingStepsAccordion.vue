@@ -18,6 +18,7 @@ import {
 	getPartnerMRRTargetLabel,
 	usePartnerOnboarding,
 } from '@/onboarding/usePartnerOnboarding'
+import { currency } from '@/utils/format'
 import LucideChevronDown from '~icons/lucide/chevron-down'
 import LucideCircleCheck from '~icons/lucide/circle-check'
 import LucideCircleDashed from '~icons/lucide/circle-dashed'
@@ -32,12 +33,8 @@ const companyInfoModalOpen = ref(false)
 const linkCertificateModalOpen = ref(false)
 const certificateStatusModalOpen = ref(false)
 
-function formatCurrency(amount: number, currency: string) {
-	return new Intl.NumberFormat('en-US', {
-		style: 'currency',
-		currency,
-		maximumFractionDigits: 0,
-	}).format(amount || 0)
+function formatCurrency(amount: number, currencyCode: string) {
+	return currency(amount || 0, currencyCode, 0)
 }
 
 const mrrCurrentLabel = computed(() =>
@@ -48,7 +45,10 @@ const mrrCurrentLabel = computed(() =>
 )
 const mrrTargetLabel = computed(() =>
 	onboarding.form.registered_country
-		? getPartnerMRRTargetLabel(onboarding.form.registered_country)
+		? getPartnerMRRTargetLabel(
+				onboarding.form.registered_country,
+				onboarding.mrrStatus.value,
+			)
 		: formatCurrency(
 				onboarding.mrrStatus.value.target_amount,
 				onboarding.mrrStatus.value.currency,

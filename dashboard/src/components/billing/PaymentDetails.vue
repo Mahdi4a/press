@@ -97,7 +97,11 @@
 				<div class="flex flex-col gap-1.5">
 					<div class="font-medium">Credit balance</div>
 					<div class="text-ink-gray-7">
-						{{ availableCredits || currency + ' 0.00' }}
+						{{
+							$format.showsToman()
+								? $format.userCurrency(team.doc.balance || 0)
+								: availableCredits || currency + ' 0.00'
+						}}
 					</div>
 				</div>
 				<div class="shrink-0">
@@ -129,8 +133,13 @@
 						v-if="team.doc.receive_budget_alerts"
 						class="leading-5 text-ink-gray-7"
 					>
-						Alert threshold is set at {{ currency
-						}}{{ team.doc.monthly_alert_threshold }} per month
+						Alert threshold is set at
+						{{
+							$format.showsToman()
+								? $format.userCurrency(team.doc.monthly_alert_threshold)
+								: currency + team.doc.monthly_alert_threshold
+						}}
+						per month
 					</div>
 					<div v-else class="text-ink-gray-7">
 						Receive an email alert if monthly total exceeds limit set
@@ -219,7 +228,9 @@ const showAddPrepaidCreditsDialog = ref(false);
 const showAddCardDialog = ref(false);
 const showChangeCardDialog = ref(false);
 
-const currency = computed(() => (team.doc.currency == 'INR' ? '₹' : '$'));
+const currency = computed(
+	() => ({ INR: '₹', IRT: 'Toman' })[team.doc.currency] || '$',
+);
 
 const billingDetails = createResource({
 	url: 'press.api.account.get_billing_information',

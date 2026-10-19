@@ -22,7 +22,7 @@ import LinkControl from '@/components/LinkControl.vue'
 import { getTeam } from '@/data/team'
 import { clusterOptions } from '@/objects/common'
 import { renderDialog } from '@/utils/components'
-import { userCurrency } from '@/utils/format'
+import { teamPlanPrice, userCurrency } from '@/utils/format'
 import { getSiteStatusBadge, trialDays } from '@/utils/site'
 
 const statusOptions = [
@@ -83,6 +83,7 @@ const sites = createListResource({
 		'plan.plan_title as plan_title',
 		'plan.price_usd as price_usd',
 		'plan.price_inr as price_inr',
+		'plan.price_irt as price_irt',
 		'group.title as group_title',
 		'group.public as group_public',
 		'group.version as version',
@@ -188,11 +189,7 @@ const sitePlan = (row: any) => {
 	if (row.trial_end_date) return trialDays(row.trial_end_date)
 	const $team = getTeam()
 	if (row.price_usd > 0) {
-		const india = $team.doc?.currency === 'INR'
-		const formattedValue = userCurrency(
-			india ? row.price_inr : row.price_usd,
-			0,
-		)
+		const formattedValue = userCurrency(teamPlanPrice(row), 0)
 		return `${formattedValue}/mo`
 	}
 	return row.plan_title

@@ -97,7 +97,7 @@ const displayBudgetAlert = computed(() => {
 			class="mb-5"
 			v-if="displayBudgetAlert > 0"
 			:amount="displayBudgetAlert"
-			:currency="team.doc.currency == 'INR' ? '₹' : '$'"
+			:currency="$format.currencySymbol(team.doc.currency)"
 		/>
 	</template>
 </template>

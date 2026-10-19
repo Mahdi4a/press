@@ -19,7 +19,7 @@
 						}}
 						-
 						{{
-							(invoice.currency === 'INR' ? '₹ ' : '$ ') + invoice.amount_due
+							$format.currencySymbol(invoice.currency) + ' ' + invoice.amount_due
 						}}
 					</li>
 				</ul>

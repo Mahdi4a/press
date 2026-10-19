@@ -341,7 +341,10 @@ export default {
 			return this.isBillingDetailsSet && Boolean(this.$team.doc.payment_mode);
 		},
 		minimumAmount() {
-			return this.$team.doc.currency == 'INR' ? 100 : 5;
+			const currency = this.$team.doc.currency;
+			if (currency == 'INR') return 100;
+			if (currency == 'IRT') return this.$team.doc.minimum_credit;
+			return 5;
 		},
 		pendingSiteRequest() {
 			return this.$team.doc.pending_site_request;

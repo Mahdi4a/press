@@ -225,17 +225,14 @@ export default {
 		formatPlan(plan) {
 			let planDoc = getPlans().find((p) => p.name === plan)
 			if (planDoc) {
-				let india = this.$team.doc.currency === 'INR'
-				return this.$format.userCurrency(
-					india ? planDoc.price_inr : planDoc.price_usd,
-				)
+				return this.$format.userCurrency(this.$format.teamPlanPrice(planDoc))
 			}
 			return plan
 		},
 		formatCurrency(value) {
 			if (!this.doc) return
 			let currency = this.doc.currency
-			return this.$format.currency(value, currency)
+			return this.$format.teamCurrency(value, currency)
 		},
 		downloadAsCSV(data, filename) {
 			if (!data || data.length === 0) return

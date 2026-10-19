@@ -1,5 +1,6 @@
 import { createResource } from 'frappe-ui'
 import { computed, reactive, ref } from 'vue'
+import { currency as formatCurrency } from '../utils/format'
 
 type TeamResource = {
 	doc?: Record<string, any>
@@ -70,20 +71,27 @@ export type PartnerOnboardingDoc = {
 
 export function getPartnerMRRCurrency(country?: string) {
 	if (country === 'India') return 'INR'
+	if (country === 'Iran') return 'IRT'
 	return 'USD'
 }
 
+// Before the server answers; for Toman this is only the Press Settings default
 export function getPartnerMRRTargetAmount(currency: string) {
+	if (currency === 'IRT') return 10_000_000
 	return currency === 'INR' ? 10000 : 100
 }
 
-export function getPartnerMRRTargetLabel(country?: string) {
+// serverTarget is the target the server reported, which wins when it is in the same currency
+export function getPartnerMRRTargetLabel(
+	country?: string,
+	serverStatus?: { currency?: string; target_amount?: number },
+) {
 	const currency = getPartnerMRRCurrency(country)
-	return new Intl.NumberFormat('en-US', {
-		style: 'currency',
-		currency,
-		maximumFractionDigits: 0,
-	}).format(getPartnerMRRTargetAmount(currency))
+	const target =
+		serverStatus?.currency === currency && serverStatus.target_amount
+			? serverStatus.target_amount
+			: getPartnerMRRTargetAmount(currency)
+	return formatCurrency(target, currency, 0)
 }
 
 const doc = ref<PartnerOnboardingDoc | null>(null)

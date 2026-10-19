@@ -155,6 +155,7 @@ import router from '../../router'
 import ClickToCopyField from '../ClickToCopyField.vue'
 import FileUploader from '../FileUploader.vue'
 import PartnerContribution from './PartnerContribution.vue'
+import { currency } from '../../utils/format'
 
 const team = inject('team')
 
@@ -211,6 +212,16 @@ function calculateTierProgress(next_tier_value) {
 	return Math.ceil((currentMonthContribution.data / next_tier_value) * 100)
 }
 
+// Toman tiers have no fixed numbers here: they come from the Partner Tier records
+const tomanTierTargets = createResource({
+	url: 'press.api.partner.get_partner_tier_targets',
+	params: { currency: 'IRT' },
+	auto: team.doc.currency === 'IRT',
+	onSuccess() {
+		if (partnerDetails.data) calculateNextTier(partnerDetails.data.partner_type)
+	},
+})
+
 function calculateNextTier(tier) {
 	const target_inr = {
 		Gold: 630000,
@@ -224,35 +235,22 @@ function calculateNextTier(tier) {
 		Bronze: 750,
 		Emerging: 350,
 	}
+	const targets =
+		team.doc.currency === 'IRT'
+			? tomanTierTargets.data || {}
+			: team.doc.currency === 'INR'
+				? target_inr
+				: target_usd
 
-	const current_tier = partnerDetails.data?.partner_type
-	let next_tier = ''
-	switch (current_tier) {
-		case 'Entry':
-			next_tier = 'Emerging'
-			nextTierTarget.value =
-				team.doc.currency === 'INR' ? target_inr.Emerging : target_usd.Emerging
-			break
-		case 'Emerging':
-			next_tier = 'Bronze'
-			nextTierTarget.value =
-				team.doc.currency === 'INR' ? target_inr.Bronze : target_usd.Bronze
-			break
-		case 'Bronze':
-			next_tier = 'Silver'
-			nextTierTarget.value =
-				team.doc.currency === 'INR' ? target_inr.Silver : target_usd.Silver
-			break
-		case 'Silver':
-			next_tier = 'Gold'
-			nextTierTarget.value =
-				team.doc.currency === 'INR' ? target_inr.Gold : target_usd.Gold
-			break
-		default:
-			next_tier = 'Gold'
-			nextTierTarget.value =
-				team.doc.currency === 'INR' ? target_inr.Gold : target_usd.Gold
+	const nextTierOf = {
+		Entry: 'Emerging',
+		Emerging: 'Bronze',
+		Bronze: 'Silver',
+		Silver: 'Gold',
 	}
+	const current_tier = partnerDetails.data?.partner_type
+	const next_tier = nextTierOf[current_tier] || 'Gold'
+	nextTierTarget.value = targets[next_tier] || 0
 	nextTier.value = next_tier
 	tierProgressValue.value = calculateTierProgress(nextTierTarget.value)
 	nextTierTarget.value = nextTierTarget.value - currentMonthContribution.data
@@ -268,16 +266,7 @@ watch(
 	{ deep: true },
 )
 
-const formatCurrency = (amount) => {
-	if (!amount) {
-		amount = 0
-	}
-	return new Intl.NumberFormat('en-US', {
-		style: 'currency',
-		currency: team.doc.currency,
-		maximumFractionDigits: 1,
-	}).format(amount)
-}
+const formatCurrency = (amount) => currency(amount || 0, team.doc.currency, 1)
 
 const formatNumber = (value) => {
 	return new Intl.NumberFormat('en-US', {

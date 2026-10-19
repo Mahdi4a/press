@@ -122,7 +122,7 @@ export default {
 				params: {
 					doctype: 'S3 Storage Plan',
 					filters: { enabled: 1 },
-					fields: ['name', 'price_inr', 'price_usd'],
+					fields: ['name', 'price_inr', 'price_irt', 'price_usd'],
 					limit: 1,
 				},
 				auto: true,
@@ -187,9 +187,8 @@ export default {
 		price() {
 			const plan = this.$resources.s3StoragePlan.data?.[0]
 			if (!plan) return null
-			return this.$team.doc.currency === 'INR'
-				? `${plan.price_inr} INR`
-				: `${plan.price_usd} USD`
+			const currency = this.$team.doc.currency
+			return `${plan[this.$format.priceField(currency)]} ${currency}`
 		},
 	},
 	methods: {

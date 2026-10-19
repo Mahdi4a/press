@@ -93,7 +93,7 @@ export default {
 		});
 
 		const currencySymbol = computed(() => {
-			return team.doc?.currency === 'INR' ? '₹' : '$';
+			return { INR: '₹', IRT: 'Toman' }[team.doc?.currency] || '$';
 		});
 
 		const axisChartConfig = computed(() => {

@@ -138,11 +138,11 @@
 											<template v-else-if="currentPlan">
 												{{ $format.planTitle(currentPlan) }}
 
-												<span v-if="currentPlan.price_inr && $isMobile">
+												<span v-if="$format.teamPlanPrice(currentPlan) && $isMobile">
 													/mo
 												</span>
 
-												<span v-if="currentPlan.price_inr && !$isMobile">
+												<span v-if="$format.teamPlanPrice(currentPlan) && !$isMobile">
 													/month
 												</span>
 											</template>
@@ -581,15 +581,10 @@ export default {
 
 			const currency = this.$team.doc.currency
 			return {
-				price:
-					currency === 'INR'
-						? this.$site.doc.current_plan.price_inr
-						: this.$site.doc.current_plan.price_usd,
+				price: this.$site.doc.current_plan[this.$format.priceField(currency)],
 				price_per_day:
-					currency === 'INR'
-						? this.$site.doc.current_plan.price_per_day_inr
-						: this.$site.doc.current_plan.price_per_day_usd,
-				currency: currency === 'INR' ? '₹' : '$',
+					this.$site.doc.current_plan[`price_per_day_${currency.toLowerCase()}`],
+				currency: this.$format.currencySymbol(currency),
 				...this.$site.doc.current_plan,
 			}
 		},

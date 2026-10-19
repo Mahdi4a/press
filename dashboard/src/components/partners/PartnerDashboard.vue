@@ -29,7 +29,7 @@
 				:config="{
 					title: 'Contribution',
 					value: currentMonthContribution.data || 0,
-					prefix: team.doc.currency == 'INR' ? '₹' : '$',
+					prefix: contributionPrefix,
 				}"
 				class="border rounded-md"
 			/>
@@ -86,7 +86,11 @@
 <script setup>
 import { inject, computed } from 'vue';
 import { createResource, NumberChart, AxisChart, DonutChart } from 'frappe-ui';
+import { currencySymbol } from '../../utils/format';
 const team = inject('team');
+// Toman is a word, so it needs a space before the number
+const contributionPrefix =
+	team.doc.currency == 'IRT' ? 'Toman ' : currencySymbol(team.doc.currency);
 
 const partnerDetails = createResource({
 	url: 'press.api.partner.get_partner_details',

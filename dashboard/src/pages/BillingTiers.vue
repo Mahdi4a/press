@@ -121,7 +121,7 @@
 							</td>
 							<td class="px-4 py-4 text-right align-middle">
 								<span class="text-sm font-semibold text-ink-gray-9">
-									{{ formatAmount(tier.amount) }}
+									{{ formatAmount(tierAmount(tier, 'amount'), isToman) }}
 								</span>
 							</td>
 						</tr>
@@ -192,10 +192,19 @@ const teamTiers = createResource({
 
 const metrics = computed(() => teamTiers.data?.team_metrics ?? {})
 
+const isToman = computed(() => team.doc.currency === 'IRT')
+
+// A tier's amount in the team's currency; Toman teams have their own amounts
+function tierAmount(tier, field) {
+	return isToman.value ? tier[`${field}_irt`] : tier[field]
+}
+
 function formatAmount(value, skip_format = false) {
 	if (value == null) return '—'
 	const isINR = team.doc.currency === 'INR'
-	const symbol = isINR ? '₹' : '$'
+	const isIRT = team.doc.currency === 'IRT'
+	const symbol = isINR ? '₹' : isIRT ? 'Toman ' : '$'
+	// Toman amounts are set by hand, never converted from dollars
 	let amount = isINR ? Number(value) * 82 : Number(value)
 	if (skip_format) {
 		amount = Number(value)
@@ -219,6 +228,9 @@ function isCurrentTier(tier) {
 
 function tierInvoiceThresholdInTeamCurrency(tier) {
 	const isINR = team.doc.currency === 'INR'
+	if (team.doc.currency === 'IRT') {
+		return Number(tier.last_invoice_amount_irt ?? 0)
+	}
 	return isINR
 		? Number(tier.last_invoice_amount ?? 0) * 82
 		: Number(tier.last_invoice_amount ?? 0)
@@ -240,7 +252,7 @@ function requirementsFor(tier, idx) {
 			met: (m.paying_since_months ?? 0) >= (tier.paying_user_since ?? 0),
 		},
 		{
-			text: `Last paid invoice ≥ ${formatAmount(tier.last_invoice_amount)}`,
+			text: `Last paid invoice ≥ ${formatAmount(tierAmount(tier, 'last_invoice_amount'), isToman)}`,
 			met:
 				(m.last_invoice_amount ?? 0) >=
 				tierInvoiceThresholdInTeamCurrency(tier),

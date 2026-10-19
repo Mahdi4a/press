@@ -409,7 +409,7 @@ export default {
 			let price = 0
 			// not using $format.planTitle cuz of manual calculation of add-on storage plan
 			let priceField =
-				this.$team.doc.currency === 'INR' ? 'price_inr' : 'price_usd'
+				this.$format.priceField(this.$team.doc.currency)
 
 			let planDescription = ''
 			if (!currentPlan?.name) {
