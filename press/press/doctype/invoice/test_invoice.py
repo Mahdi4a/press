@@ -19,6 +19,10 @@ from .invoice import Invoice, create_invoices_for_next_month, finalize_draft_inv
 
 @patch.object(Invoice, "create_invoice_on_frappeio", new=Mock())
 class TestInvoice(FrappeTestCase):
+	def assertDictContainsSubset(self, subset, dictionary):  # noqa: N802
+		"""unittest dropped this in Python 3.14"""
+		self.assertLessEqual(subset.items(), dictionary.items())
+
 	def setUp(self):
 		super().setUp()
 
