@@ -2028,6 +2028,7 @@ class Cluster(Document):
 				"title": f"Basic Cluster - {server_type}",
 				"instance_type": self.get_default_instance_type(),
 				"price_inr": 0,
+				"price_irt": 0,
 				"price_usd": 0,
 				"vcpu": 2,
 				"memory": 4096,

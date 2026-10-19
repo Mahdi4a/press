@@ -864,7 +864,7 @@ def get_marketplace_subscriptions_for_site(site: str):
 		subscription.plan_info = frappe.db.get_value(
 			"Marketplace App Plan",
 			subscription.plan,
-			["price_usd", "price_inr"],
+			["price_usd", "price_inr", "price_irt"],
 			as_dict=True,
 		)
 		subscription.is_free = frappe.db.get_value(

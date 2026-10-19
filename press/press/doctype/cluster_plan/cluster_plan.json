@@ -10,6 +10,7 @@
 		"title",
 		"pricing_section",
 		"price_inr",
+		"price_irt",
 		"column_break_wnze",
 		"price_usd",
 		"allowed_roles_section",
@@ -34,6 +35,14 @@
 			"in_list_view": 1,
 			"label": "Price (INR)",
 			"reqd": 1
+		},
+		{
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"options": "IRT",
+			"label": "Price (IRT)"
 		},
 		{ "fieldname": "column_break_wnze", "fieldtype": "Column Break" },
 		{

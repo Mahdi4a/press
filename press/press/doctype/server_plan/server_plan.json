@@ -17,6 +17,7 @@
 		"ignore_machine_availability_sync",
 		"pricing_section",
 		"price_inr",
+		"price_irt",
 		"column_break_sjmg",
 		"price_usd",
 		"section_break_nifk",
@@ -78,6 +79,14 @@
 			"label": "Price (INR)",
 			"options": "INR",
 			"reqd": 1
+		},
+		{
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"label": "Price (IRT)",
+			"options": "IRT"
 		},
 		{ "fieldname": "column_break_sjmg", "fieldtype": "Column Break" },
 		{

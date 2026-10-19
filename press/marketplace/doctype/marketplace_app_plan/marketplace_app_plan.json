@@ -13,6 +13,7 @@
 		"interval",
 		"section_break_2",
 		"price_inr",
+		"price_irt",
 		"column_break_3",
 		"price_usd",
 		"plan_features_section",
@@ -56,6 +57,13 @@
 			"fieldtype": "Currency",
 			"label": "Price (INR)",
 			"reqd": 1
+		},
+		{
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"options": "IRT",
+			"label": "Price (IRT)"
 		},
 		{ "fieldname": "column_break_3", "fieldtype": "Column Break" },
 		{

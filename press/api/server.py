@@ -767,13 +767,13 @@ def options():
 	storage_plan = frappe.db.get_value(
 		"Server Storage Plan",
 		{"enabled": 1},
-		["price_inr", "price_usd"],
+		["price_inr", "price_irt", "price_usd"],
 		as_dict=True,
 	)
 	snapshot_plan = frappe.db.get_value(
 		"Server Snapshot Plan",
 		{"enabled": 1},
-		["price_inr", "price_usd"],
+		["price_inr", "price_irt", "price_usd"],
 		as_dict=True,
 	)
 	return {
@@ -812,6 +812,7 @@ def secondary_server_plans(
 			ServerPlan.title,
 			(ServerPlan.price_usd * autoscale_discount).as_("price_usd"),
 			(ServerPlan.price_inr * autoscale_discount).as_("price_inr"),
+			(ServerPlan.price_irt * autoscale_discount).as_("price_irt"),
 			ServerPlan.vcpu,
 			ServerPlan.memory,
 			ServerPlan.disk,
@@ -899,6 +900,7 @@ def plans(name, cluster=None, platform=None, resource_name=None, cpu_and_memory_
 			"description",
 			"price_usd",
 			"price_inr",
+			"price_irt",
 			"vcpu",
 			"memory",
 			"disk",

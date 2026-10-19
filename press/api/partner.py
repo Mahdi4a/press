@@ -12,6 +12,7 @@ from frappe.utils.user import is_system_user
 
 from press.guards import role_guard
 from press.utils import get_current_team
+from press.utils.currency import INR, INR_PER_USD_PARTNER, IRT, USD, partner_amount, price_field
 
 
 def is_lead_team(lead: str) -> bool:
@@ -177,7 +178,7 @@ def transfer_credits(amount: float, customer: str) -> float | None:
 		)
 
 	amt = frappe.utils.flt(amount)
-	partner_doc = frappe.get_doc("Team", partner)
+	partner_doc = partner
 	credits_available = partner_doc.get_balance()
 	partner_level = partner_doc.get_partner_level()
 	discount_percent = DISCOUNT_MAP.get(partner_level[0]) if partner_level else 0
@@ -189,10 +190,12 @@ def transfer_credits(amount: float, customer: str) -> float | None:
 	credits_to_transfer = amt
 	amt -= amt * discount_percent
 	if customer_doc.currency != partner_doc.currency:
-		if partner_doc.currency == "USD":
-			credits_to_transfer = credits_to_transfer * 83
-		else:
-			credits_to_transfer = credits_to_transfer / 83
+		if IRT in (customer_doc.currency, partner_doc.currency):
+			frappe.throw(
+				"Credits cannot be transferred between teams billed in different currencies when one of them is billed in Toman. "
+				"Please choose a customer billed in the same currency as your team."
+			)
+		credits_to_transfer = partner_amount(credits_to_transfer, partner_doc.currency, customer_doc.currency)
 
 	try:
 		customer_doc.allocate_credit_amount(
@@ -235,13 +238,9 @@ def get_partner_contribution_list(partner_email: str) -> list[dict] | None:
 	)
 
 	for d in invoices:
-		if partner_currency != d.currency:
-			if partner_currency == "USD":
-				d.update({"partner_total": flt(d.total_before_discount / 83, 2)})
-			else:
-				d.update({"partner_total": flt(d.total_before_discount * 83)})
-		else:
-			d.update({"partner_total": d.total_before_discount})
+		amount = partner_amount(d.total_before_discount, d.currency, partner_currency)
+		# An invoice in a currency that cannot be converted (Toman) has no partner total
+		d.update({"partner_total": flt(amount, 2) if amount is not None else 0})
 	return invoices
 
 
@@ -259,14 +258,20 @@ def get_partner_mrr(partner_email: str, prev_month: bool = False) -> list[dict] 
 	Invoice = frappe.qb.DocType("Invoice")
 	case_stmt = Case()
 
-	if partner_currency == "INR":
-		case_stmt.when(Invoice.currency == "USD", Invoice.total_before_discount * 83)
-		case_stmt.when(Invoice.currency == "INR", Invoice.total_before_discount)
-	elif partner_currency == "USD":
-		case_stmt.when(Invoice.currency == "INR", Invoice.total_before_discount / 83)
-		case_stmt.when(Invoice.currency == "USD", Invoice.total_before_discount)
-
-	case_stmt.else_(Invoice.total_before_discount)
+	if partner_currency == IRT:
+		# Toman has no rate: only Toman invoices count, nothing is converted
+		case_stmt.when(Invoice.currency == IRT, Invoice.total_before_discount)
+		case_stmt.else_(0)
+	else:
+		if partner_currency == INR:
+			case_stmt.when(Invoice.currency == USD, Invoice.total_before_discount * INR_PER_USD_PARTNER)
+			case_stmt.when(Invoice.currency == INR, Invoice.total_before_discount)
+		else:
+			case_stmt.when(Invoice.currency == INR, Invoice.total_before_discount / INR_PER_USD_PARTNER)
+			case_stmt.when(Invoice.currency == USD, Invoice.total_before_discount)
+		# Toman invoices cannot be converted, so they are left out
+		case_stmt.when(Invoice.currency == IRT, 0)
+		case_stmt.else_(Invoice.total_before_discount)
 
 	condition = Invoice.status == "Paid"
 	if prev_month:
@@ -554,13 +559,9 @@ def get_current_month_partner_contribution(partner_email: str) -> float | None:
 	invoices = query.run(as_dict=True)
 	total = 0
 	for d in invoices:
-		if partner_currency != d.currency:
-			if partner_currency == "USD":
-				total += flt(d.total_before_discount / 83, 2)
-			else:
-				total += flt(d.total_before_discount * 83, 2)
-		else:
-			total += d.total_before_discount
+		amount = partner_amount(d.total_before_discount, d.currency, partner_currency)
+		if amount is not None:
+			total += flt(amount, 2)
 
 	return total
 
@@ -599,13 +600,9 @@ def get_prev_month_partner_contribution(partner_email: str) -> float | None:
 
 	total = 0
 	for d in invoices:
-		if partner_currency != d.currency:
-			if partner_currency == "USD":
-				total += flt(d.total_before_discount / 83, 2)
-			else:
-				total += flt(d.total_before_discount * 83, 2)
-		else:
-			total += d.total_before_discount
+		amount = partner_amount(d.total_before_discount, d.currency, partner_currency)
+		if amount is not None:
+			total += flt(amount, 2)
 	return total
 
 
@@ -614,7 +611,11 @@ def get_prev_month_partner_contribution(partner_email: str) -> float | None:
 def calculate_partner_tier(contribution: float, currency: str) -> dict | None:
 	partner_tier = frappe.qb.DocType("Partner Tier")
 	query = frappe.qb.from_(partner_tier).select(partner_tier.name)
-	if currency == "INR":
+	if currency == IRT:
+		query = query.where(partner_tier.target_in_irt <= contribution).orderby(
+			partner_tier.target_in_irt, order=frappe.qb.desc
+		)
+	elif currency == INR:
 		query = query.where(partner_tier.target_in_inr <= contribution).orderby(
 			partner_tier.target_in_inr, order=frappe.qb.desc
 		)
@@ -625,6 +626,15 @@ def calculate_partner_tier(contribution: float, currency: str) -> dict | None:
 
 	tier = query.run(as_dict=True)
 	return tier[0] if tier else None
+
+
+@frappe.whitelist()
+@role_guard.api("partner")
+def get_partner_tier_targets(currency: str) -> dict[str, float]:
+	"""Each enabled tier's target in the given currency, by tier title."""
+	column = {IRT: "target_in_irt", INR: "target_in_inr"}.get(currency, "target_in_usd")
+	tiers = frappe.get_all("Partner Tier", {"enabled": 1}, ["title", column])
+	return {tier.title: tier[column] for tier in tiers}
 
 
 @frappe.whitelist()
@@ -959,7 +969,10 @@ def update_lead_status(lead_name: str, status: str, **kwargs: str) -> None:  # n
 			paid_plans = (
 				frappe.qb.from_(SitePlan)
 				.select(SitePlan.name)
-				.where((SitePlan.price_inr > 0) & ((SitePlan.enabled == 1) | (SitePlan.legacy_plan == 1)))
+				.where(
+					((SitePlan.price_inr > 0) | (SitePlan.price_irt > 0))
+					& ((SitePlan.enabled == 1) | (SitePlan.legacy_plan == 1))
+				)
 				.run(pluck=True)
 			)
 			site_plan = result[0].plan
@@ -1013,9 +1026,11 @@ def calculate_total_amount(server_name: str) -> float:
 def calculate_total_team_amount(team_name: str) -> float:
 	subscriptions = frappe.get_all("Subscription", {"team": team_name, "enabled": 1}, ["plan_type", "plan"])
 
+	# A Toman team's total is plain Toman; every other team keeps the USD total
+	column = price_field(IRT if frappe.db.get_value("Team", team_name, "currency") == IRT else USD)
 	total_amount = 0
 	for d in subscriptions:
-		total_amount += frappe.db.get_value(d.plan_type, d.plan, "price_usd") or 0
+		total_amount += frappe.db.get_value(d.plan_type, d.plan, column) or 0
 
 	return total_amount
 
@@ -1060,9 +1075,15 @@ def check_certificate_exists(email: str, certificate_type: str) -> int:
 
 @frappe.whitelist()
 def get_fc_plans() -> list[str]:
-	site_plans = frappe.get_all(
-		"Site Plan", {"enabled": 1, "document_type": "Site", "price_inr": (">", 0)}, pluck="name"
-	)
+	site_plans = [
+		*frappe.get_all(
+			"Site Plan", {"enabled": 1, "document_type": "Site", "price_inr": (">", 0)}, pluck="name"
+		),
+		*frappe.get_all(
+			"Site Plan", {"enabled": 1, "document_type": "Site", "price_irt": (">", 0)}, pluck="name"
+		),
+	]
+	site_plans = list(dict.fromkeys(site_plans))
 	return [*site_plans, "Dedicated Server", "Managed Press"]
 
 

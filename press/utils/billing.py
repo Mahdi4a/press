@@ -155,6 +155,14 @@ def get_setup_intent(team):
 	return intent
 
 
+def is_stripe_configured() -> bool:
+	from frappe.utils.password import get_decrypted_password
+
+	return bool(
+		get_decrypted_password("Press Settings", "Press Settings", "stripe_secret_key", raise_exception=False)
+	)
+
+
 def get_stripe():
 	from frappe.utils.password import get_decrypted_password
 

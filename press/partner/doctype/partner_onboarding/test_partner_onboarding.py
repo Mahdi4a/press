@@ -288,3 +288,62 @@ class IntegrationTestPartnerOnboarding(IntegrationTestCase):
 
 		self.assertEqual(status["current_amount"], 0)
 		self.assertFalse(status["requirement_complete"])
+
+	def _create_toman_team(self):
+		team = create_test_team()
+		team.db_set({"country": "Iran", "currency": "IRT"})
+		return team
+
+	def test_mrr_for_toman_team_uses_toman_target_without_conversion(self):
+		team = self._create_toman_team()
+		with freeze_time(BEFORE_MID_MONTH):
+			invoice = self._create_subscription_invoice(team.name, get_last_day(today()), 12_000_000)
+			invoice.db_set("currency", "IRT")
+			status = _get_mrr_status(team)
+
+		self.assertEqual(status["currency"], "IRT")
+		self.assertEqual(status["target_amount"], 10_000_000)
+		self.assertEqual(status["current_amount"], 12_000_000)
+		self.assertTrue(status["requirement_complete"])
+
+	def test_mrr_for_toman_team_below_target_is_incomplete(self):
+		team = self._create_toman_team()
+		with freeze_time(BEFORE_MID_MONTH):
+			invoice = self._create_subscription_invoice(team.name, get_last_day(today()), 4_000_000)
+			invoice.db_set("currency", "IRT")
+			status = _get_mrr_status(team)
+
+		self.assertEqual(status["current_amount"], 4_000_000)
+		self.assertEqual(status["progress"], 40)
+		self.assertFalse(status["requirement_complete"])
+
+	def test_mrr_for_toman_team_ignores_invoices_in_other_currencies(self):
+		team = self._create_toman_team()
+		with freeze_time(BEFORE_MID_MONTH):
+			invoice = self._create_subscription_invoice(team.name, get_last_day(today()), 50_000_000)
+			invoice.db_set("currency", "INR")
+			status = _get_mrr_status(team)
+
+		self.assertEqual(status["current_amount"], 0)
+		self.assertFalse(status["requirement_complete"])
+
+	def test_mrr_for_toman_team_reads_target_from_press_settings(self):
+		team = self._create_toman_team()
+		frappe.db.set_single_value("Press Settings", "minimum_partner_mrr_irt", 2_000_000)
+		with freeze_time(BEFORE_MID_MONTH):
+			invoice = self._create_subscription_invoice(team.name, get_last_day(today()), 2_500_000)
+			invoice.db_set("currency", "IRT")
+			status = _get_mrr_status(team)
+
+		self.assertEqual(status["target_amount"], 2_000_000)
+		self.assertTrue(status["requirement_complete"])
+
+	def test_mrr_for_inr_team_ignores_toman_invoices(self):
+		team = create_test_team()
+		with freeze_time(BEFORE_MID_MONTH):
+			invoice = self._create_subscription_invoice(team.name, get_last_day(today()), 90_000_000)
+			invoice.db_set("currency", "IRT")
+			status = _get_mrr_status(team)
+
+		self.assertEqual(status["currency"], "INR")
+		self.assertEqual(status["current_amount"], 0)

@@ -45,6 +45,7 @@ class SitePlan(Plan):
 		plan_description: DF.Data | None
 		plan_title: DF.Data | None
 		price_inr: DF.Currency
+		price_irt: DF.Currency
 		price_usd: DF.Currency
 		private_bench_support: DF.Check
 		private_benches: DF.Check
@@ -79,6 +80,7 @@ class SitePlan(Plan):
 
 	def get_doc(self, doc):
 		doc["price_per_day_inr"] = self.get_price_per_day("INR")
+		doc["price_per_day_irt"] = self.get_price_per_day("IRT")
 		doc["price_per_day_usd"] = self.get_price_per_day("USD")
 		return doc
 

@@ -266,6 +266,47 @@ class TestTeam(FrappeTestCase):
 		total = team.total_subscribed_amount()
 		self.assertEqual(total, 50)
 
+	def test_can_create_site_uses_toman_prices_against_toman_spending_limit(self):
+		team = create_test_team()
+		team.db_set({"currency": "IRT", "apply_limits": 1, "spending_limit": 10_000_000})
+		plan = frappe.get_doc(
+			{
+				"doctype": "Site Plan",
+				"name": "Test-Plan-IRT-Limit",
+				"document_type": "Site",
+				"interval": "Daily",
+				"price_usd": 10,
+				"price_inr": 800,
+				"price_irt": 6_000_000,
+			}
+		).insert()
+
+		def subscribe(desc):
+			todo = frappe.get_doc(doctype="ToDo", description=desc).insert()
+			return frappe.get_doc(
+				{
+					"doctype": "Subscription",
+					"document_type": "ToDo",
+					"document_name": todo.name,
+					"team": team.name,
+					"plan_type": "Site Plan",
+					"plan": plan.name,
+					"enabled": 1,
+				}
+			).insert()
+
+		subscribe("first")
+		self.assertEqual(team.total_subscribed_amount(), 6_000_000)
+		with patch.object(Team, "has_unpaid_invoices", return_value=False):
+			allow, _ = team.can_create_site()
+			self.assertTrue(allow)
+
+			subscribe("second")
+			self.assertEqual(team.total_subscribed_amount(), 12_000_000)
+			allow, why = team.can_create_site()
+		self.assertFalse(allow)
+		self.assertIn("exceeded your spending limit", why)
+
 	def test_get_upcoming_invoice_ignores_invoice_already_finalized_to_unpaid(self):
 		"""Once an invoice is finalized to Unpaid it may already have a Stripe/Razorpay
 		invoice created against it - get_upcoming_invoice must never return it for further

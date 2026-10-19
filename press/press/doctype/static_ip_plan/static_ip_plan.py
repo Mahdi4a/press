@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 
+from press.utils.currency import price_field
+
 
 class StaticIPPlan(Document):
 	# begin: auto-generated types
@@ -16,13 +18,14 @@ class StaticIPPlan(Document):
 
 		enabled: DF.Check
 		price_inr: DF.Currency
+		price_irt: DF.Currency
 		price_usd: DF.Currency
 		provider: DF.Literal["AWS EC2"]
 		title: DF.Data | None
 	# end: auto-generated types
 
 	def get_price_for_interval(self, interval, currency):
-		price = self.price_inr if currency == "INR" else self.price_usd
+		price = self.get(price_field(currency))
 
 		if interval == "Daily":
 			return frappe.utils.flt(price, 2)

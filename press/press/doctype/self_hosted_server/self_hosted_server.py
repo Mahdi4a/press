@@ -334,6 +334,7 @@ class SelfHostedServer(Document):
 		plan.name = plan_name
 		plan.title = plan_name
 		plan.price_inr = 0
+		plan.price_irt = 0
 		plan.price_usd = 0
 		plan.save()
 

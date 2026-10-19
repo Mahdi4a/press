@@ -10,6 +10,7 @@
 		"title",
 		"pricing_section",
 		"price_inr",
+		"price_irt",
 		"column_break_xauk",
 		"price_usd"
 	],
@@ -30,6 +31,13 @@
 			"fieldname": "price_inr",
 			"fieldtype": "Currency",
 			"label": "Price per GB (INR)"
+		},
+		{
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"options": "IRT",
+			"label": "Price per GB (IRT)"
 		},
 		{ "fieldname": "column_break_xauk", "fieldtype": "Column Break" },
 		{

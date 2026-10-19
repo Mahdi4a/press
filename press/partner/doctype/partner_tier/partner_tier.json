@@ -12,6 +12,7 @@
 		"column_break_fnzp",
 		"target_in_inr",
 		"target_in_usd",
+		"target_in_irt",
 		"section_break_ktip",
 		"certificates_required",
 		"column_break_udmp",
@@ -43,6 +44,12 @@
 			"fieldname": "target_in_usd",
 			"fieldtype": "Float",
 			"label": "Target in USD"
+		},
+		{
+			"fieldname": "target_in_irt",
+			"fieldtype": "Currency",
+			"label": "Target in Toman",
+			"options": "IRT"
 		},
 		{
 			"fieldname": "section_break_ktip",

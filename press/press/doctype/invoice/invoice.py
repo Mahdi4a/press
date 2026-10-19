@@ -26,6 +26,8 @@ from press.utils.billing import (
 	get_razorpay_client,
 	is_frappe_auth_disabled,
 )
+from press.utils.currency import currency_symbol as currency_symbol_for
+from press.utils.currency import price_field as plan_price_field
 from press.utils.jobs import has_job_timeout_exceeded
 from press.utils.telemetry import capture_pulse
 
@@ -189,8 +191,8 @@ class Invoice(Document):
 	def get_doc(self, doc):
 		doc.invoice_pdf = self.invoice_pdf or (self.currency == "USD" and self.get_pdf())
 		currency = frappe.get_value("Team", self.team, "currency")
-		price_field = "price_inr" if currency == "INR" else "price_usd"
-		currency_symbol = "₹" if currency == "INR" else "$"
+		price_field = plan_price_field(currency)
+		currency_symbol = currency_symbol_for(currency)
 
 		for item in doc["items"]:
 			self._format_invoice_item(item, price_field, currency_symbol)
@@ -477,15 +479,17 @@ class Invoice(Document):
 		if self.currency == "INR":
 			current_total = flt(self.total / 82, 2)
 
+		# Toman teams are tiered by the Toman amounts set on each tier, not a dollar conversion
+		amount_field = "last_invoice_amount_irt" if self.currency == "IRT" else "last_invoice_amount"
 		tiers = frappe.get_all(
 			"Team Tier",
-			fields=["name", "tier", "last_invoice_amount"],
-			order_by="last_invoice_amount desc",
+			fields=["name", "tier", amount_field],
+			order_by=f"{amount_field} desc",
 		)
 
 		new_tier = None
 		for tier in tiers:
-			if flt(tier.last_invoice_amount) <= current_total:
+			if flt(tier.get(amount_field)) <= current_total:
 				new_tier = tier.name
 				break
 

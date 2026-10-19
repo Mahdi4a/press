@@ -14,6 +14,7 @@
 		"billing_tab",
 		"free_credits_usd",
 		"free_credits_inr",
+		"free_credits_irt",
 		"column_break_cpry",
 		"micro_debit_charge_usd",
 		"micro_debit_charge_inr",
@@ -32,6 +33,23 @@
 		"column_break_qfwx",
 		"print_format",
 		"ic_key",
+		"signalads_section",
+		"signalads_token",
+		"signalads_sender",
+		"signalads_column_break",
+		"signalads_otp_pattern_id",
+		"zarinpal_section",
+		"zarinpal_merchant_id",
+		"zarinpal_live",
+		"zarinpal_column_break",
+		"zarinpal_toman_per_usd",
+		"toman_limits_section",
+		"minimum_credit_irt",
+		"server_credit_threshold_irt",
+		"column_break_irt_limits",
+		"default_spending_limit_irt",
+		"referral_threshold_irt",
+		"minimum_partner_mrr_irt",
 		"stripe_settings_section",
 		"stripe_publishable_key",
 		"stripe_secret_key",
@@ -280,6 +298,8 @@
 		"partnership_fee_usd",
 		"column_break_yxrj",
 		"partnership_fee_inr",
+		"column_break_partnership_irt",
+		"partnership_fee_irt",
 		"section_break_dhzi",
 		"drive_resource_link",
 		"frappe_school_authentication_section",
@@ -403,6 +423,12 @@
 			"fieldtype": "Currency",
 			"label": "Credits on Signup (INR)",
 			"options": "INR"
+		},
+		{
+			"fieldname": "free_credits_irt",
+			"fieldtype": "Currency",
+			"label": "Credits on Signup (IRT)",
+			"options": "IRT"
 		},
 		{
 			"fieldname": "free_credits_usd",
@@ -1413,6 +1439,16 @@
 			"label": "Partnership Fee INR"
 		},
 		{
+			"fieldname": "column_break_partnership_irt",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "partnership_fee_irt",
+			"fieldtype": "Currency",
+			"label": "Partnership Fee (Toman)",
+			"options": "IRT"
+		},
+		{
 			"fieldname": "github_pat_token",
 			"fieldtype": "Data",
 			"label": "Github PAT Token"
@@ -1899,6 +1935,115 @@
 			"fieldname": "raven_incidents_channel",
 			"fieldtype": "Data",
 			"label": "Raven Incidents Channel"
+		},
+		{
+			"collapsible": 1,
+			"fieldname": "signalads_section",
+			"fieldtype": "Section Break",
+			"label": "Signalads SMS"
+		},
+		{
+			"description": "Bearer token from the Signalads (Transmitor) panel",
+			"fieldname": "signalads_token",
+			"fieldtype": "Password",
+			"label": "Signalads API Token"
+		},
+		{
+			"description": "Sender line number approved in Signalads",
+			"fieldname": "signalads_sender",
+			"fieldtype": "Data",
+			"label": "Signalads Sender Number"
+		},
+		{
+			"fieldname": "signalads_column_break",
+			"fieldtype": "Column Break"
+		},
+		{
+			"description": "Optional. Approved pattern with an {otp} parameter. When empty, the OTP is sent as plain text.",
+			"fieldname": "signalads_otp_pattern_id",
+			"fieldtype": "Int",
+			"label": "Signalads OTP Pattern ID"
+		},
+		{
+			"collapsible": 1,
+			"fieldname": "zarinpal_section",
+			"fieldtype": "Section Break",
+			"label": "Zarinpal"
+		},
+		{
+			"description": "In sandbox mode any UUID works",
+			"fieldname": "zarinpal_merchant_id",
+			"fieldtype": "Data",
+			"label": "Zarinpal Merchant ID"
+		},
+		{
+			"default": "0",
+			"description": "Leave unticked to use the Zarinpal sandbox. Tick only when going live with a real merchant ID.",
+			"fieldname": "zarinpal_live",
+			"fieldtype": "Check",
+			"label": "Zarinpal Live Mode"
+		},
+		{
+			"fieldname": "zarinpal_column_break",
+			"fieldtype": "Column Break"
+		},
+		{
+			"collapsible": 1,
+			"description": "Every amount here is in Toman and does not depend on the dollar rate",
+			"fieldname": "toman_limits_section",
+			"fieldtype": "Section Break",
+			"label": "Toman Limits"
+		},
+		{
+			"default": "500000",
+			"description": "Smallest amount a team can add as credit in one payment",
+			"fieldname": "minimum_credit_irt",
+			"fieldtype": "Currency",
+			"label": "Minimum Credit (Toman)",
+			"options": "IRT"
+		},
+		{
+			"default": "20000000",
+			"description": "Credit a team needs before it can create a server",
+			"fieldname": "server_credit_threshold_irt",
+			"fieldtype": "Currency",
+			"label": "Credit Needed for a Server (Toman)",
+			"options": "IRT"
+		},
+		{
+			"fieldname": "column_break_irt_limits",
+			"fieldtype": "Column Break"
+		},
+		{
+			"default": "10000000",
+			"description": "Monthly subscription total a new team may reach. Changed per team tier later.",
+			"fieldname": "default_spending_limit_irt",
+			"fieldtype": "Currency",
+			"label": "Spending Limit of a New Team (Toman)",
+			"options": "IRT"
+		},
+		{
+			"default": "2500000",
+			"description": "What a referred team must have paid before the referrer gets the bonus",
+			"fieldname": "referral_threshold_irt",
+			"fieldtype": "Currency",
+			"label": "Referral Bonus Threshold (Toman)",
+			"options": "IRT"
+		},
+		{
+			"default": "10000000",
+			"description": "Monthly subscription total a Toman team must bill to become a partner",
+			"fieldname": "minimum_partner_mrr_irt",
+			"fieldtype": "Currency",
+			"label": "Minimum Partner MRR (Toman)",
+			"options": "IRT"
+		},
+		{
+			"default": "100000",
+			"description": "Used to turn the USD credit amount into Toman",
+			"fieldname": "zarinpal_toman_per_usd",
+			"fieldtype": "Int",
+			"label": "Toman per 1 USD"
 		}
 	],
 	"issingle": 1,

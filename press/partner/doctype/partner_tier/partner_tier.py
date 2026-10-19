@@ -19,6 +19,7 @@ class PartnerTier(Document):
 		enabled: DF.Check
 		pmm_required: DF.Int
 		target_in_inr: DF.Float
+		target_in_irt: DF.Currency
 		target_in_usd: DF.Float
 		title: DF.Data | None
 	# end: auto-generated types
@@ -27,6 +28,7 @@ class PartnerTier(Document):
 		"enabled",
 		"name",
 		"target_in_inr",
+		"target_in_irt",
 		"target_in_usd",
 		"title",
 	)

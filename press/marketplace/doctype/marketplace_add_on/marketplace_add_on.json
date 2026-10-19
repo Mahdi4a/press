@@ -5,7 +5,7 @@
 	"doctype": "DocType",
 	"editable_grid": 1,
 	"engine": "InnoDB",
-	"field_order": ["type", "price_usd", "price_inr"],
+	"field_order": ["type", "price_usd", "price_inr", "price_irt"],
 	"fields": [
 		{
 			"fieldname": "type",
@@ -27,6 +27,15 @@
 			"in_list_view": 1,
 			"in_preview": 1,
 			"label": "Price (INR)"
+		},
+		{
+			"default": "0",
+			"fieldname": "price_irt",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"in_preview": 1,
+			"label": "Price (IRT)",
+			"options": "IRT"
 		}
 	],
 	"index_web_pages_for_search": 1,

@@ -8,9 +8,11 @@
 	"field_order": [
 		"tier",
 		"amount",
+		"amount_irt",
 		"column_break_emnb",
 		"paying_user_since",
-		"last_invoice_amount"
+		"last_invoice_amount",
+		"last_invoice_amount_irt"
 	],
 	"fields": [
 		{
@@ -24,6 +26,14 @@
 			"fieldtype": "Float",
 			"in_list_view": 1,
 			"label": "Amount (in USD)"
+		},
+		{
+			"description": "Used instead of the USD amount for teams billed in Toman",
+			"fieldname": "amount_irt",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"label": "Amount (in Toman)",
+			"options": "IRT"
 		},
 		{
 			"fieldname": "column_break_emnb",
@@ -40,6 +50,14 @@
 			"fieldtype": "Float",
 			"in_list_view": 1,
 			"label": "Last Invoice Amount (in USD)"
+		},
+		{
+			"description": "Used instead of the USD amount for teams billed in Toman",
+			"fieldname": "last_invoice_amount_irt",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"label": "Last Invoice Amount (in Toman)",
+			"options": "IRT"
 		}
 	],
 	"grid_page_length": 50,

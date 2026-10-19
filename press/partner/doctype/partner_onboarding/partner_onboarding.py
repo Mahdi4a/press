@@ -15,6 +15,8 @@ from press.partner.doctype.certificate_link_request.certificate_link_request imp
 	notify_partner_team,
 )
 from press.utils import get_current_team
+from press.utils.currency import IRT, currency_for_country, partner_amount
+from press.utils.gateway_settings import get_toman_limit
 
 
 class PartnerOnboarding(Document):
@@ -260,9 +262,7 @@ def _get_mrr_currency(team) -> str:
 	doc = _get_partner_onboarding(team.name)
 	country = doc.registered_country if doc else team.country
 
-	if country == "India":
-		return "INR"
-	return "USD"
+	return currency_for_country(country)
 
 
 def _get_mrr_subscription_invoices(team_name: str) -> list:
@@ -316,18 +316,18 @@ def _get_mrr_subscription_invoices(team_name: str) -> list:
 
 def _get_mrr_status(team) -> dict:
 	team_currency = _get_mrr_currency(team)
-	target_amount = 10000 if team_currency == "INR" else 100
+	if team_currency == IRT:
+		target_amount = get_toman_limit("minimum_partner_mrr_irt")
+	else:
+		target_amount = 10000 if team_currency == "INR" else 100
 
 	invoices = _get_mrr_subscription_invoices(team.name)
 
 	current_amount = 0
 	for row in invoices:
-		if team_currency == row.currency:
-			current_amount += row.total_before_discount
-		elif team_currency == "USD":
-			current_amount += flt(row.total_before_discount / 83, 2)
-		else:
-			current_amount += flt(row.total_before_discount * 83, 2)
+		amount = partner_amount(row.total_before_discount, row.currency, team_currency)
+		if amount is not None:
+			current_amount += flt(amount, 2)
 
 	return {
 		"current_amount": flt(current_amount, 2),

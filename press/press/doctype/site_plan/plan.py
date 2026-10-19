@@ -3,6 +3,7 @@ from frappe.model.document import Document
 from frappe.utils import rounded
 
 from press.utils import group_children_in_result
+from press.utils.currency import price_field
 
 
 class Plan(Document):
@@ -18,7 +19,7 @@ class Plan(Document):
 		return None
 
 	def get_price_per_day(self, currency):
-		price = self.price_inr if currency == "INR" else self.price_usd
+		price = self.get(price_field(currency))
 		return rounded(price / self.period, 2)
 
 	@property

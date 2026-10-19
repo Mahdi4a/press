@@ -17,6 +17,7 @@ from press.press.doctype.database_server.database_server import DatabaseServer
 from press.press.doctype.s3_storage_plan.s3_storage_plan import AUDIT_LOG_STORAGE_PLAN
 from press.press.doctype.site_plan.site_plan import SitePlan
 from press.utils import log_error
+from press.utils.currency import price_field as plan_price_field
 from press.utils.jobs import has_job_timeout_exceeded
 
 if TYPE_CHECKING:
@@ -58,7 +59,7 @@ class Subscription(Document):
 		Subscription = frappe.qb.DocType("Subscription")
 		UsageRecord = frappe.qb.DocType("Usage Record")
 		Plan = frappe.qb.DocType("Marketplace App Plan")
-		price_field = Plan.price_inr if frappe.local.team().currency == "INR" else Plan.price_usd
+		price_field = getattr(Plan, plan_price_field(frappe.local.team().currency))
 		filters = list_args.get("filters", {})
 
 		query = (
@@ -180,12 +181,12 @@ class Subscription(Document):
 		plan = frappe.get_cached_doc(self.plan_type, self.plan)
 
 		if self.additional_storage:
-			price = plan.price_inr if team.currency == "INR" else plan.price_usd
+			price = plan.get(plan_price_field(team.currency))
 			price_per_day = price / plan.period  # no rounding off to avoid discrepancies
 			amount = flt((price_per_day * cint(self.additional_storage)), 2)
 
 		elif self.plan_type == "Server Snapshot Plan":
-			price = plan.price_inr if team.currency == "INR" else plan.price_usd
+			price = plan.get(plan_price_field(team.currency))
 			price_per_day = price / plan.period  # no rounding off to avoid discrepancies
 			amount = flt(
 				(
@@ -196,7 +197,7 @@ class Subscription(Document):
 			)
 
 		elif self.plan_type == "S3 Storage Plan" and self.plan == AUDIT_LOG_STORAGE_PLAN:
-			price = plan.price_inr if team.currency == "INR" else plan.price_usd
+			price = plan.get(plan_price_field(team.currency))
 			price_per_day = price / plan.period  # no rounding off to avoid discrepancies
 			database_server = DatabaseServer("Database Server", self.document_name)
 			amount = flt(price_per_day * database_server.get_audit_log_storage_gb(), 2)

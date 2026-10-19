@@ -122,6 +122,7 @@ class PressSettings(Document):
 		default_outgoing_id: DF.Data | None
 		default_outgoing_pass: DF.Data | None
 		default_server_plan_type: DF.Link | None
+		default_spending_limit_irt: DF.Currency
 		deploy_marker: DF.Data | None
 		disable_agent_job_deduplication: DF.Check
 		disable_auto_retry: DF.Check
@@ -162,6 +163,7 @@ class PressSettings(Document):
 		frappeio_api_key: DF.Data | None
 		frappeio_api_secret: DF.Password | None
 		free_credits_inr: DF.Currency
+		free_credits_irt: DF.Currency
 		free_credits_usd: DF.Currency
 		github_access_token: DF.Data | None
 		github_app_client_id: DF.Data | None
@@ -185,6 +187,8 @@ class PressSettings(Document):
 		max_failed_backup_attempts_in_a_day: DF.Int
 		micro_debit_charge_inr: DF.Currency
 		micro_debit_charge_usd: DF.Currency
+		minimum_credit_irt: DF.Currency
+		minimum_partner_mrr_irt: DF.Currency
 		minimum_rebuild_memory: DF.Int
 		monitor_server: DF.Link | None
 		monitor_token: DF.Data | None
@@ -196,6 +200,7 @@ class PressSettings(Document):
 		offsite_backups_provider: DF.Literal["AWS S3"]
 		offsite_backups_secret_access_key: DF.Password | None
 		partnership_fee_inr: DF.Int
+		partnership_fee_irt: DF.Currency
 		partnership_fee_usd: DF.Int
 		paypal_enabled: DF.Check
 		plausible_api_key: DF.Password | None
@@ -217,6 +222,7 @@ class PressSettings(Document):
 		razorpay_webhook_secret: DF.Data | None
 		realtime_job_updates: DF.Check
 		redis_cache_size: DF.Int
+		referral_threshold_irt: DF.Currency
 		region_name: DF.Data | None
 		remote_access_key_id: DF.Data | None
 		remote_link_expiry: DF.Int
@@ -229,9 +235,13 @@ class PressSettings(Document):
 		school_url: DF.Data | None
 		send_email_notifications: DF.Check
 		send_telegram_notifications: DF.Check
+		server_credit_threshold_irt: DF.Currency
 		servers_using_alternative_http_port_for_communication: DF.SmallText | None
 		set_redis_password: DF.Check
 		shared_directory: DF.Data | None
+		signalads_otp_pattern_id: DF.Int
+		signalads_sender: DF.Data | None
+		signalads_token: DF.Password | None
 		spamd_api_key: DF.Data | None
 		spamd_api_secret: DF.Password | None
 		spamd_endpoint: DF.Data | None
@@ -275,10 +285,14 @@ class PressSettings(Document):
 		wazuh_api_verify_tls: DF.Check
 		wazuh_server: DF.Data | None
 		webroot_directory: DF.Data | None
+		zarinpal_live: DF.Check
+		zarinpal_merchant_id: DF.Data | None
+		zarinpal_toman_per_usd: DF.Int
 	# end: auto-generated types
 
 	dashboard_fields = (
 		"partnership_fee_inr",
+		"partnership_fee_irt",
 		"partnership_fee_usd",
 	)
 

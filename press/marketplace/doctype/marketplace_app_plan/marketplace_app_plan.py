@@ -48,7 +48,7 @@ def has_permission(doc, ptype: str, user: str | None = None) -> bool:
 
 
 class MarketplaceAppPlan(Plan):
-	dashboard_fields: ClassVar = ["app", "name", "title", "price_inr", "price_usd", "enabled"]
+	dashboard_fields: ClassVar = ["app", "name", "title", "price_inr", "price_irt", "price_usd", "enabled"]
 
 	@staticmethod
 	def get_list_query(query):
@@ -79,7 +79,7 @@ class MarketplaceAppPlan(Plan):
 		plans = frappe.get_all(
 			"Marketplace App Plan",
 			filters=filters,
-			fields=["price_inr", "price_usd"],
+			fields=["price_inr", "price_irt", "price_usd"],
 		)
 
 		has_free = False

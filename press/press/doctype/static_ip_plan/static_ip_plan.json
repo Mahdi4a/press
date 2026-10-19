@@ -12,6 +12,7 @@
 		"provider",
 		"pricing_section",
 		"price_inr",
+		"price_irt",
 		"column_break_mkan",
 		"price_usd"
 	],
@@ -51,6 +52,15 @@
 			"in_list_view": 1,
 			"label": "Price (INR)",
 			"reqd": 1
+		},
+		{
+			"description": "Hourly Rate",
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"options": "IRT",
+			"label": "Price (IRT)"
 		},
 		{
 			"fieldname": "column_break_mkan",

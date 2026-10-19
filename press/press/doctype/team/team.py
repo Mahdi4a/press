@@ -31,8 +31,12 @@ from press.utils.billing import (
 	get_razorpay_client,
 	get_stripe,
 	is_frappe_auth_disabled,
+	is_stripe_configured,
 	process_micro_debit_test_charge,
 )
+from press.utils.currency import currency_for_country, price_field
+from press.utils.currency import currency_symbol as currency_symbol_for
+from press.utils.gateway_settings import get_toman_limit, get_toman_per_usd
 from press.utils.jobs import has_job_timeout_exceeded
 from press.utils.telemetry import capture, capture_pulse
 from press.utils.user import is_system_manager
@@ -52,11 +56,24 @@ SERVER_CREDIT_THRESHOLD = {"USD": 200, "INR": 16000}
 TIER_AFTER_CARD_ADDED = "Growth"
 
 
+def tier_spending_limit(tier: str | None, currency: str | None):
+	"""The spending limit of a Team Tier in the team's own currency.
+
+	A team billed in Toman uses the tier's own Toman amount, set by hand, never a conversion
+	of the dollar amount, so it does not move with the dollar rate.
+	"""
+	if currency == "IRT":
+		return frappe.db.get_value("Team Tier", tier, "amount_irt") or get_toman_limit(
+			"default_spending_limit_irt"
+		)
+	return frappe.db.get_value("Team Tier", tier, "amount")
+
+
 def upgrade_beginner_tier_for_new_card(team_name):
 	tier, apply_limits = frappe.db.get_value("Team", team_name, ["tier", "apply_limits"])
 	if not apply_limits or tier != "Beginner":
 		return
-	new_limit = frappe.db.get_value("Team Tier", TIER_AFTER_CARD_ADDED, "amount")
+	new_limit = tier_spending_limit(TIER_AFTER_CARD_ADDED, frappe.db.get_value("Team", team_name, "currency"))
 	frappe.db.set_value("Team", team_name, {"tier": TIER_AFTER_CARD_ADDED, "spending_limit": new_limit})
 
 
@@ -233,6 +250,11 @@ class Team(Document):
 		user.unsubscribed_from_recovery_code_reminders = two_fa.unsubscribed_from_recovery_code_reminders
 		doc.user_info = user
 		doc.balance = self.get_balance()
+		# Iranian teams see their USD amounts in Toman, at this rate
+		doc.toman_per_usd = get_toman_per_usd() if self.country == "Iran" and self.currency == "USD" else None
+		if self.currency == "IRT":
+			doc.minimum_credit = get_toman_limit("minimum_credit_irt")
+			doc.server_credit_threshold = get_toman_limit("server_credit_threshold_irt")
 		doc.is_desk_user = user.user_type == "System User"
 		doc.is_support_agent = has_role("Press Support Agent")
 		doc.can_request_access = has_role("Press Support Agent")
@@ -339,7 +361,7 @@ class Team(Document):
 		self.reject_reenabling_team_for_banned_team()
 
 	def before_insert(self):
-		self.currency = "INR" if self.country == "India" else "USD"
+		self.currency = currency_for_country(self.country)
 
 		if not self.referrer_id:
 			self.set_referrer_id()
@@ -463,7 +485,10 @@ class Team(Document):
 
 		team.team_title = "Parent Team"
 		team.apply_limits = 1
-		team.spending_limit = 100  # default spending limit for new teams, can be updated later by team admin
+		# default spending limit for new teams, can be updated later by team admin
+		team.spending_limit = (
+			get_toman_limit("default_spending_limit_irt") if currency_for_country(country) == "IRT" else 100
+		)
 		team.tier = "Beginner"
 		team.insert(ignore_permissions=True, ignore_links=True)
 		team.append("team_members", {"user": user.name})
@@ -567,7 +592,7 @@ class Team(Document):
 
 	def set_team_currency(self):
 		if not self.currency and self.country:
-			self.currency = "INR" if self.country == "India" else "USD"
+			self.currency = currency_for_country(self.country)
 
 	def get_user_list(self):
 		return [row.user for row in self.team_members]
@@ -689,6 +714,9 @@ class Team(Document):
 			{"team": self.name, "enabled": 1},
 			["name", "plan_type", "plan", "additional_storage"],
 		)
+		# Compare in the team's own currency: spending_limit is a plain number in it
+		# (toman for IRT), so a USD sum would never reach it.
+		price_column = price_field(self.currency)
 		total = 0
 		for sub in subscriptions:
 			if not sub.plan_type or not sub.plan:
@@ -698,11 +726,11 @@ class Team(Document):
 				# the per-GB price here would read as a monthly commitment.
 				continue
 			if sub.plan_type == "Server Storage Plan":
-				total += (frappe.db.get_value(sub.plan_type, sub.plan, "price_usd") or 0) * flt(
+				total += (frappe.db.get_value(sub.plan_type, sub.plan, price_column) or 0) * flt(
 					sub.additional_storage
 				)
 			else:
-				total += frappe.db.get_value(sub.plan_type, sub.plan, "price_usd") or 0
+				total += frappe.db.get_value(sub.plan_type, sub.plan, price_column) or 0
 		return total
 
 	def update_tier_limit(self):
@@ -711,7 +739,7 @@ class Team(Document):
 
 		doc_before_save = self.get_doc_before_save()
 		if self.tier and doc_before_save and self.tier != doc_before_save.tier:
-			new_limit = frappe.db.get_value("Team Tier", self.tier, "amount") or 100
+			new_limit = tier_spending_limit(self.tier, self.currency) or 100
 			frappe.db.set_value("Team", self.name, "spending_limit", new_limit)
 
 	@frappe.whitelist()
@@ -821,7 +849,8 @@ class Team(Document):
 		)
 
 	def create_stripe_customer(self):
-		if not self.stripe_customer_id:
+		# Teams paying through a local gateway can exist without a Stripe customer
+		if not self.stripe_customer_id and is_stripe_configured():
 			stripe = get_stripe()
 			customer = stripe.Customer.create(email=self.user, name=get_fullname(self.user))
 			self.stripe_customer_id = customer.id
@@ -937,6 +966,9 @@ class Team(Document):
 				log_error("Failed to rename customer on frappe.io", traceback=frappe.get_traceback())
 
 	def update_billing_details_on_stripe(self, address=None):
+		if not (self.stripe_customer_id and is_stripe_configured()):
+			return
+
 		stripe = get_stripe()
 		if not address:
 			address = frappe.get_doc("Address", self.billing_address)
@@ -1395,7 +1427,11 @@ class Team(Document):
 		if self.servers_enabled:
 			return
 
-		threshold = SERVER_CREDIT_THRESHOLD.get(self.currency)
+		threshold = (
+			get_toman_limit("server_credit_threshold_irt")
+			if self.currency == "IRT"
+			else SERVER_CREDIT_THRESHOLD.get(self.currency)
+		)
 		if threshold and self.get_balance() < threshold:
 			frappe.throw(f"You need to have {threshold} {self.currency} worth of credits to create a server.")
 
@@ -1428,7 +1464,7 @@ class Team(Document):
 
 	def billing_info(self):
 		micro_debit_charge_field = (
-			"micro_debit_charge_usd" if self.currency == "USD" else "micro_debit_charge_inr"
+			"micro_debit_charge_inr" if self.currency == "INR" else "micro_debit_charge_usd"
 		)
 		amount = frappe.db.get_single_value("Press Settings", micro_debit_charge_field)
 
@@ -2018,6 +2054,8 @@ def has_unsettled_invoices(team):
 	minimum_amount = 5
 	if currency == "INR":
 		minimum_amount = 450
+	elif currency == "IRT":
+		minimum_amount = get_toman_limit("minimum_credit_irt")
 
 	data = frappe.get_all(
 		"Invoice",
@@ -2136,7 +2174,8 @@ def send_budget_alert_email(team_info, invoice):
 	"""
 	try:
 		team_user = team_info["user"]
-		currency = "₹" if team_info["currency"] == "INR" else "$"
+		symbol = currency_symbol_for(team_info["currency"])
+		currency = f"{symbol} " if len(symbol) > 1 else symbol
 
 		invoice_amount = f"{currency}{invoice['total']}"
 		alert_threshold = f"{currency}{team_info['monthly_alert_threshold']}"

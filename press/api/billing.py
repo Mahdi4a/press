@@ -35,10 +35,14 @@ from press.utils.billing import (
 	get_razorpay_client,
 	get_setup_intent,
 	get_stripe,
+	is_stripe_configured,
 	make_formatted_doc,
 	states_with_tin,
 	validate_gstin_check_digit,
 )
+from press.utils.currency import currency_symbol as currency_symbol_for
+from press.utils.currency import price_field as plan_price_field
+from press.utils.gateway_settings import get_toman_limit
 from press.utils.mpesa_utils import create_mpesa_request_log
 from press.utils.telemetry import capture_pulse
 
@@ -662,6 +666,13 @@ def is_paypal_enabled() -> bool:
 
 @frappe.whitelist()
 @role_guard.api("billing")
+def is_stripe_enabled() -> bool:
+	"""Whether Stripe has a secret key, so the dashboard only offers it when it can work."""
+	return is_stripe_configured()
+
+
+@frappe.whitelist()
+@role_guard.api("billing")
 def get_or_create_razorpay_customer() -> str:
 	"""Get existing or create new Razorpay customer for current team"""
 	team = get_current_team(get_doc=True)
@@ -907,13 +918,13 @@ def _validate_razorpay_order_type(transaction_type, amount, doc_name, currency):
 
 
 def _validate_prepaid_credits(amount, currency):
-	minimum_amount = 100 if currency == "INR" else 5
+	minimum_amount = {"INR": 100, "IRT": get_toman_limit("minimum_credit_irt")}.get(currency, 5)
 	# A paying team may settle a smaller unpaid amount
 	unpaid_amount = flt(total_unpaid_amount(), 2)
 	if unpaid_amount > 0:
 		minimum_amount = min(minimum_amount, unpaid_amount)
 	if amount < minimum_amount:
-		currency_symbol = "₹" if currency == "INR" else "$"
+		currency_symbol = currency_symbol_for(currency)
 		frappe.throw(
 			_("Amount should be at least {0}{1}").format(currency_symbol, minimum_amount)
 		)  # nosemgrep
@@ -923,10 +934,10 @@ def _validate_purchase_plan(amount, doc_name, currency):
 	exists_result = frappe.db.exists("Site Plan", doc_name)
 	if not doc_name or not exists_result:
 		frappe.throw(_("Plan {0} does not exist").format(doc_name or ""))  # nosemgrep
-	price_field = "price_inr" if currency == "INR" else "price_usd"
+	price_field = plan_price_field(currency)
 	plan_amount = frappe.db.get_value("Site Plan", doc_name, price_field)
 	if amount < plan_amount:
-		currency_symbol = "₹" if currency == "INR" else "$"
+		currency_symbol = currency_symbol_for(currency)
 		frappe.throw(
 			_(
 				"Amount should not be less than plan amount of {0}{1}. Please verify your amount and plan amount"
@@ -950,7 +961,7 @@ def _validate_invoice_payment(amount, doc_name, currency):
 			).format(doc_name)
 		)  # nosemgrep
 	if amount < invoice_amount:
-		currency_symbol = "₹" if currency == "INR" else "$"
+		currency_symbol = currency_symbol_for(currency)
 		frappe.throw(
 			_("Amount should not be less than invoice amount of {0}{1}").format(
 				currency_symbol, invoice_amount
@@ -1567,7 +1578,15 @@ def team_tiers():
 
 	tiers = frappe.get_all(
 		"Team Tier",
-		fields=["name", "tier", "amount", "paying_user_since", "last_invoice_amount"],
+		fields=[
+			"name",
+			"tier",
+			"amount",
+			"amount_irt",
+			"paying_user_since",
+			"last_invoice_amount",
+			"last_invoice_amount_irt",
+		],
 		order_by="amount asc",
 	)
 

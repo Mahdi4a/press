@@ -10,6 +10,7 @@
 		"title",
 		"pricing_section",
 		"price_inr",
+		"price_irt",
 		"column_break_pgqx",
 		"price_usd"
 	],
@@ -38,6 +39,16 @@
 			"label": "Price per GB (INR)",
 			"precision": "4",
 			"reqd": 1
+		},
+		{
+			"description": "Per GB per month",
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"options": "IRT",
+			"label": "Price per GB (IRT)",
+			"precision": "4"
 		},
 		{
 			"fieldname": "column_break_pgqx",

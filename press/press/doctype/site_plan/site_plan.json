@@ -15,6 +15,7 @@
 		"interval",
 		"column_break_5",
 		"price_inr",
+		"price_irt",
 		"price_usd",
 		"allow_downgrading_from_other_plan",
 		"legacy_plan",
@@ -80,6 +81,15 @@
 			"label": "Price (INR)",
 			"options": "INR",
 			"reqd": 1
+		},
+		{ "fieldname": "column_break_5", "fieldtype": "Column Break" },
+		{
+			"fieldname": "price_irt",
+			"default": "0",
+			"fieldtype": "Currency",
+			"in_list_view": 1,
+			"label": "Price (IRT)",
+			"options": "IRT"
 		},
 		{
 			"fieldname": "price_usd",

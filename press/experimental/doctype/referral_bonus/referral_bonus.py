@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 
+from press.utils.gateway_settings import get_toman_limit
+
 
 class ReferralBonus(Document):
 	@frappe.whitelist()
@@ -20,7 +22,7 @@ class ReferralBonus(Document):
 			return
 
 		team = frappe.get_doc("Team", self.referred_by)
-		credits_field = "free_credits_inr" if team.currency == "INR" else "free_credits_usd"
+		credits_field = f"free_credits_{(team.currency or 'USD').lower()}"
 		credit_amount = frappe.db.get_single_value("Press Settings", credits_field)
 		if not credit_amount:
 			return
@@ -46,6 +48,9 @@ def team_has_spent(team, usd_amount=25.0, inr_amount=1800.0):
 
 	if team_currency == "INR":
 		return total_paid >= inr_amount
+
+	if team_currency == "IRT":
+		return total_paid >= get_toman_limit("referral_threshold_irt")
 
 	return total_paid >= usd_amount
 

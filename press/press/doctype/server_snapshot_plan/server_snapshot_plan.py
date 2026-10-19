@@ -15,6 +15,7 @@ class ServerSnapshotPlan(Plan):
 
 		enabled: DF.Check
 		price_inr: DF.Currency
+		price_irt: DF.Currency
 		price_usd: DF.Currency
 		provider: DF.Literal["AWS EC2"]
 		title: DF.Data | None

@@ -17,6 +17,7 @@ from press.api.client import dashboard_whitelist
 from press.press.doctype.communication_info.communication_info import get_communication_info
 from press.runner import Ansible, Status, StepHandler
 from press.utils import log_error
+from press.utils.currency import price_field as plan_price_field
 
 if typing.TYPE_CHECKING:
 	from press.press.doctype.prometheus_alert_rule.prometheus_alert_rule import PrometheusAlertRule
@@ -802,8 +803,7 @@ def run_scheduled_scale_records():
 
 def calculate_secondary_server_price(team: str, secondary_server_plan: str) -> float:
 	"""Calculate secondary server proice with a discount"""
-	is_inr = frappe.db.get_value("Team", team, "currency") == "INR"
-	price_field = "price_inr" if is_inr else "price_usd"
+	price_field = plan_price_field(frappe.db.get_value("Team", team, "currency"))
 
 	server_price = frappe.db.get_value("Server Plan", secondary_server_plan, price_field)
 	autoscale_discount = frappe.db.get_single_value("Press Settings", "autoscale_discount")
