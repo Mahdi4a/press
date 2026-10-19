@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import functools
 import json
+import random
 import re
 import socket
 import ssl
@@ -45,6 +46,13 @@ class SupervisorProcess(TypedDict):
 	message: str | None
 	group: str | None
 	pid: int | None
+
+
+def get_random_names(doctype: str, filters: dict, limit: int, *, use_db: bool = False) -> list[str]:
+	"""Up to `limit` random names. Frappe v16 refuses `RAND()` as an order, so the picking is done here."""
+	get_all = frappe.db.get_all if use_db else frappe.get_all
+	names = get_all(doctype, filters, pluck="name")
+	return random.sample(names, min(limit, len(names)))
 
 
 def log_error(title, **kwargs):

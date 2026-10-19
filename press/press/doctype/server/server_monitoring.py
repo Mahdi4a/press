@@ -651,7 +651,7 @@ def _get_sites_with_all_backup_attempts_failed(max_attempts: int) -> list[frappe
 			"status": ("in", ["Failure", "Delivery Failure"]),
 			"creation": (">=", frappe.utils.add_days(None, -1)),
 		},
-		fields=["site", "count(name) as failures"],
+		fields=["site", {"COUNT": "name", "as": "failures"}],
 		group_by="site",
 		order_by="failures desc, site asc",
 	)
@@ -775,7 +775,7 @@ def _get_backup_digest_site_details(site_names: list[str]) -> dict[str, frappe._
 		frappe.get_all(
 			"Site Backup",
 			filters={"site": ("in", site_names), "status": "Success"},
-			fields=["site", "max(creation) as last_success"],
+			fields=["site", {"MAX": "creation", "as": "last_success"}],
 			group_by="site",
 			as_list=True,
 		)

@@ -46,7 +46,7 @@ from press.frappe_compute_client.client import Client as FrappeComputeClient
 from press.overrides import get_permission_query_conditions_for_doctype
 from press.press.doctype.server_activity.server_activity import log_server_activity
 from press.runner import Ansible
-from press.utils import log_error
+from press.utils import get_random_names, log_error
 from press.utils.jobs import has_job_timeout_exceeded
 
 if typing.TYPE_CHECKING:
@@ -3345,7 +3345,7 @@ def snapshot_oci_virtual_machines():
 
 
 def snapshot_frappe_compute_virtual_machines():
-	machines = frappe.get_all(
+	machines = get_random_names(
 		"Virtual Machine",
 		{"status": "Running", "skip_automated_snapshot": 0, "cloud_provider": "Frappe Compute"},
 	)
@@ -3464,9 +3464,7 @@ def snapshot_aws_servers():
 			"series": "f",
 			"disable_server_snapshot": 0,
 		},
-		order_by="RAND()",
-		pluck="name",
-		limit_page_length=50,
+		50,
 	)
 	for machine in machines:
 		if has_job_timeout_exceeded():

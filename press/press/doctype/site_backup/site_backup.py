@@ -985,7 +985,7 @@ def _send_backup_success_rate_alert(
 	failures_by_site = frappe.get_all(
 		"Site Backup",
 		filters={"status": "Failure", "creation": (">=", since)},
-		fields=["site", "count(name) as failures"],
+		fields=["site", {"COUNT": "name", "as": "failures"}],
 		group_by="site",
 		order_by="failures desc, site asc",
 		limit=BACKUP_FAILURE_ALERT_SITE_LIMIT,

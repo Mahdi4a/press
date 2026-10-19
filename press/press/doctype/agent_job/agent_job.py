@@ -33,7 +33,7 @@ from press.press.doctype.site_migration.site_migration import (
 	process_site_migration_job_update,
 )
 from press.press.doctype.telegram_message.telegram_message import TelegramMessage
-from press.utils import log_error, timer
+from press.utils import get_random_names, log_error, timer
 from press.utils.redact import redact_secrets
 from press.utils.user import as_administrator
 
@@ -680,29 +680,27 @@ def fail_old_jobs():
 			process_job_updates(job)
 		frappe.db.commit()
 
-	failed_jobs = frappe.db.get_all(
+	failed_jobs = get_random_names(
 		"Agent Job",
 		{
 			"status": ("in", ["Pending", "Running"]),
 			"job_id": ("!=", 0),
 			"creation": ("<", add_days(None, -2)),
 		},
-		limit=100,
-		order_by="RAND()",
-		pluck="name",
+		100,
+		use_db=True,
 	)
 	update_status(failed_jobs, "Failure")
 
-	delivery_failed_jobs = frappe.db.get_all(
+	delivery_failed_jobs = get_random_names(
 		"Agent Job",
 		{
 			"job_id": 0,
 			"creation": ("<", add_days(None, -2)),
 			"status": ("!=", "Delivery Failure"),
 		},
-		limit=100,
-		order_by="RAND()",
-		pluck="name",
+		100,
+		use_db=True,
 	)
 
 	update_status(delivery_failed_jobs, "Delivery Failure")
