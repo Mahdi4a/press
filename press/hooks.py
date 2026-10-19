@@ -10,6 +10,7 @@ app_icon = "octicon octicon-rocket"
 app_color = "grey"
 app_email = "aditya@frappe.io"
 app_license = "GNU Affero General Public License v3.0"
+required_apps = ["iran_base"]
 version = app_version
 
 # Includes in <head>

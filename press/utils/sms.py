@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import frappe
 import requests
+from iran_base.utils.sms import try_normalize_mobile
 
 from press.utils.gateway_settings import get_gateway_setting
 
@@ -34,17 +35,9 @@ class SMSNotConfigured(frappe.ValidationError):
 
 def normalize_mobile(mobile: str) -> str:
 	"""Return an Iranian mobile as 09XXXXXXXXX. Accepts +98 / 0098 / 98 / 9 prefixes and Persian digits."""
-	digits = str(mobile or "").translate(str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789"))
-	digits = "".join(ch for ch in digits if ch.isdigit())
-	if digits.startswith("0098"):
-		digits = digits[4:]
-	elif digits.startswith("98") and len(digits) == 12:
-		digits = digits[2:]
-	if len(digits) == 10 and digits.startswith("9"):
-		digits = "0" + digits
-	if not (len(digits) == 11 and digits.startswith("09")):
+	if (normalized := try_normalize_mobile(mobile)) is None:
 		frappe.throw("Invalid mobile number", frappe.ValidationError)
-	return digits
+	return normalized
 
 
 def email_from_mobile(mobile: str) -> str:
