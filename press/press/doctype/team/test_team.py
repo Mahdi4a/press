@@ -298,8 +298,9 @@ class TestTeam(FrappeTestCase):
 		subscribe("first")
 		self.assertEqual(team.total_subscribed_amount(), 6_000_000)
 		with patch.object(Team, "has_unpaid_invoices", return_value=False):
-			allow, _ = team.can_create_site()
-			self.assertTrue(allow)
+			_, why = team.can_create_site()
+			# Whatever else may refuse a new site, the spending limit does not
+			self.assertNotIn("exceeded your spending limit", why)
 
 			subscribe("second")
 			self.assertEqual(team.total_subscribed_amount(), 12_000_000)

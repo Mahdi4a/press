@@ -34,7 +34,13 @@ class TestZarinpalCallback(FrappeTestCase):
 		patcher.start()
 		self.addCleanup(patcher.stop)
 		self.addCleanup(utils._release, AUTHORITY)
+		self.addCleanup(self.remove_credits)
 		self.addCleanup(frappe.cache().delete_value, utils._cache_key(AUTHORITY))
+
+	def remove_credits(self):
+		# The callback commits, as it must when the bank redirects to it, so a rollback leaves these behind
+		frappe.db.delete("Balance Transaction", {"description": ("like", f"Zarinpal {AUTHORITY} %")})
+		frappe.db.commit()
 
 	def credits(self) -> int:
 		return frappe.db.count("Balance Transaction", {"description": ("like", f"Zarinpal {AUTHORITY} %")})

@@ -70,7 +70,9 @@ def _own_origin(value: str | None) -> str:
 	taking any value would let a caller point that redirect anywhere."""
 	own = frappe.utils.get_url().rstrip("/")
 	value = (value or "").rstrip("/")
-	if value and urlparse(value).netloc in {urlparse(own).netloc, frappe.request.host}:
+	request = getattr(frappe.local, "request", None)
+	hosts = {urlparse(own).netloc, request.host if request else None}
+	if value and urlparse(value).netloc in hosts:
 		return value
 	return own
 
@@ -151,7 +153,7 @@ def verify_payment(Authority: str | None = None, Status: str | None = None):  # 
 		except Exception:
 			_release(Authority)
 			frappe.log_error("Zarinpal payment could not be credited", "Zarinpal Error")
-	elif Authority and not pending and frappe.cache.exists(_claim_key(Authority)):
+	elif Authority and not pending and frappe.cache.get(_claim_key(Authority)) is not None:
 		# The user reloaded the callback after it was credited
 		redirect_to = f"{billing_url}?zarinpal=success"
 

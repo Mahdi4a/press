@@ -34,7 +34,7 @@ from press.utils.billing import (
 	is_stripe_configured,
 	process_micro_debit_test_charge,
 )
-from press.utils.currency import currency_for_country, price_field
+from press.utils.currency import currency_for_country
 from press.utils.currency import currency_symbol as currency_symbol_for
 from press.utils.gateway_settings import get_toman_limit, get_toman_per_usd
 from press.utils.jobs import has_job_timeout_exceeded
@@ -714,9 +714,9 @@ class Team(Document):
 			{"team": self.name, "enabled": 1},
 			["name", "plan_type", "plan", "additional_storage"],
 		)
-		# Compare in the team's own currency: spending_limit is a plain number in it
-		# (toman for IRT), so a USD sum would never reach it.
-		price_column = price_field(self.currency)
+		# spending_limit is in USD for every team except those billed in Toman, where it is a
+		# plain Toman number, so only they are summed in their own currency.
+		price_column = "price_irt" if self.currency == "IRT" else "price_usd"
 		total = 0
 		for sub in subscriptions:
 			if not sub.plan_type or not sub.plan:
