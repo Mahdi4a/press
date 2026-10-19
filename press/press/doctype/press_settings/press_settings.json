@@ -41,8 +41,13 @@
 		"zarinpal_section",
 		"zarinpal_merchant_id",
 		"zarinpal_live",
+		"zarinpal_allow_sandbox",
 		"zarinpal_column_break",
 		"zarinpal_toman_per_usd",
+		"sms_limits_section",
+		"sms_hourly_limit_per_mobile",
+		"sms_limits_column_break",
+		"sms_daily_limit_per_mobile",
 		"toman_limits_section",
 		"minimum_credit_irt",
 		"server_credit_threshold_irt",
@@ -2044,6 +2049,36 @@
 			"fieldname": "zarinpal_toman_per_usd",
 			"fieldtype": "Int",
 			"label": "Toman per 1 USD"
+		},
+		{
+			"fieldname": "zarinpal_allow_sandbox",
+			"fieldtype": "Check",
+			"default": "0",
+			"label": "Allow Zarinpal Sandbox",
+			"description": "Lets the sandbox run when Live Mode is off. The sandbox accepts any payment, so keep this off on a real site."
+		},
+		{
+			"fieldname": "sms_limits_section",
+			"fieldtype": "Section Break",
+			"label": "SMS Limits"
+		},
+		{
+			"fieldname": "sms_hourly_limit_per_mobile",
+			"fieldtype": "Int",
+			"default": "10",
+			"label": "SMS per Hour per Number",
+			"description": "Verification codes one mobile number may be sent in an hour"
+		},
+		{
+			"fieldname": "sms_limits_column_break",
+			"fieldtype": "Column Break"
+		},
+		{
+			"fieldname": "sms_daily_limit_per_mobile",
+			"fieldtype": "Int",
+			"default": "30",
+			"label": "SMS per Day per Number",
+			"description": "Verification codes one mobile number may be sent in a day"
 		}
 	],
 	"issingle": 1,

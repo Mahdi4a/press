@@ -240,6 +240,8 @@ class PressSettings(Document):
 		set_redis_password: DF.Check
 		shared_directory: DF.Data | None
 		signalads_otp_pattern_id: DF.Int
+		sms_daily_limit_per_mobile: DF.Int
+		sms_hourly_limit_per_mobile: DF.Int
 		signalads_sender: DF.Data | None
 		signalads_token: DF.Password | None
 		spamd_api_key: DF.Data | None
@@ -285,6 +287,7 @@ class PressSettings(Document):
 		wazuh_api_verify_tls: DF.Check
 		wazuh_server: DF.Data | None
 		webroot_directory: DF.Data | None
+		zarinpal_allow_sandbox: DF.Check
 		zarinpal_live: DF.Check
 		zarinpal_merchant_id: DF.Data | None
 		zarinpal_toman_per_usd: DF.Int

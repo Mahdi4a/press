@@ -29,10 +29,10 @@ def _urls() -> tuple[str, str]:
 
 	# The sandbox verifies any payment, so it would hand out free credits on a live site
 	# that forgot to tick "Zarinpal Live Mode". It must be asked for.
-	if not (frappe.conf.developer_mode or frappe.conf.get("zarinpal_allow_sandbox")):
+	if not (frappe.conf.developer_mode or get_gateway_setting("zarinpal_allow_sandbox")):
 		frappe.throw(
 			"Zarinpal is in sandbox mode. Tick Zarinpal Live Mode in Press Settings, "
-			"or set zarinpal_allow_sandbox in site_config.json for testing."
+			"or tick Allow Zarinpal Sandbox for testing."
 		)
 	return SANDBOX_API, SANDBOX_START_PAY
 
