@@ -3,7 +3,7 @@
 		<!-- Amount -->
 		<div>
 			<FormControl
-				label="Amount"
+				:label="team.doc.currency === 'IRT' ? 'Amount (Toman)' : 'Amount'"
 				class="mb-3"
 				v-model.number="creditsToBuy"
 				name="amount"
@@ -12,7 +12,7 @@
 			>
 				<template #prefix>
 					<div class="grid w-4 place-items-center text-sm text-ink-gray-7">
-						{{ team.doc.currency === 'INR' ? '₹' : '$' }}
+						{{ team.doc.currency === 'IRT' ? '' : $format.currencySymbol(team.doc.currency) }}
 					</div>
 				</template>
 			</FormControl>
@@ -28,7 +28,7 @@
 			>
 				<template #prefix>
 					<div class="grid w-4 place-items-center text-sm text-ink-gray-7">
-						{{ team.doc.currency === 'INR' ? '₹' : '$' }}
+						{{ $format.currencySymbol(team.doc.currency) }}
 					</div>
 				</template>
 			</FormControl>
@@ -52,11 +52,29 @@
 			</FormControl>
 		</div>
 
+		<!-- Iranian teams pay in Toman, the credit itself stays in USD -->
+		<FormControl
+			v-if="team.doc.currency === 'USD' && team.doc.toman_per_usd"
+			class="mt-3"
+			:label="`Amount in Toman (Rate: ${team.doc.toman_per_usd.toLocaleString(
+				'en-US',
+			)} against 1 USD)`"
+			disabled
+			:modelValue="
+				Math.round((creditsToBuy || 0) * team.doc.toman_per_usd).toLocaleString(
+					'en-US',
+				)
+			"
+			name="amount_in_toman"
+			type="text"
+		/>
+
 		<!-- Payment Gateway -->
 		<div class="mt-4">
 			<div class="text-xs text-ink-gray-6">Select Payment Gateway</div>
 			<div class="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
 				<Button
+					v-if="stripeEnabled.data && team.doc.country !== 'Iran'"
 					size="lg"
 					:class="{
 						'border-[1.5px] border-gray-700': paymentGateway === 'Stripe',
@@ -79,6 +97,16 @@
 				>
 					<RazorpayLogo v-if="team.doc.currency === 'INR'" class="w-24" />
 					<PayPalLogo v-if="team.doc.currency === 'USD'" class="h-7 w-20" />
+				</Button>
+				<Button
+					v-if="team.doc.country === 'Iran'"
+					size="lg"
+					:class="{
+						'border-[1.5px] border-gray-700': paymentGateway === 'Zarinpal',
+					}"
+					@click="paymentGateway = 'Zarinpal'"
+				>
+					Zarinpal
 				</Button>
 				<Button
 					v-if="team.doc.country === 'Kenya'"
@@ -117,6 +145,12 @@
 			@cancel="show = false"
 		/>
 
+		<BuyCreditsZarinpal
+			v-if="paymentGateway === 'Zarinpal'"
+			:amount="creditsToBuy"
+			:minimumAmount="minimumAmount"
+		/>
+
 		<BuyPrepaidCreditsMpesa
 			v-if="paymentGateway === 'M-Pesa'"
 			:amount="creditsToBuy"
@@ -136,6 +170,7 @@ import RazorpayLogo from '../../logo/RazorpayLogo.vue'
 import StripeLogo from '../../logo/StripeLogo.vue'
 import BuyCreditsRazorpay from './BuyCreditsRazorpay.vue'
 import BuyCreditsStripe from './BuyCreditsStripe.vue'
+import BuyCreditsZarinpal from './BuyCreditsZarinpal.vue'
 import BuyPrepaidCreditsMpesa from './mpesa/BuyPrepaidCreditsMpesa.vue'
 
 const emit = defineEmits(['success'])
@@ -162,6 +197,12 @@ const paypalEnabled = createResource({
 	auto: true,
 })
 
+const stripeEnabled = createResource({
+	url: 'press.api.billing.is_stripe_enabled',
+	cache: 'stripeEnabled',
+	auto: true,
+})
+
 const totalUnpaidAmount = createResource({
 	url: 'press.api.billing.total_unpaid_amount',
 	cache: 'totalUnpaidAmount',
@@ -172,7 +213,12 @@ const minimumAmount = computed(() => {
 	if (props.minimumAmount) return props.minimumAmount
 	if (!team.doc) return 0
 	let unpaidAmount = totalUnpaidAmount.data || 0
-	const minimumDefault = team.doc?.currency == 'INR' ? 410 : 5
+	const minimumDefault =
+		team.doc?.currency == 'INR'
+			? 410
+			: team.doc?.currency == 'IRT'
+				? team.doc.minimum_credit
+				: 5
 
 	if (unpaidAmount > 100000 && team.doc?.currency == 'INR') {
 		unpaidAmount = 100000
@@ -252,6 +298,7 @@ const fetchExchangeRate = async () => {
 }
 
 onMounted(() => {
+	if (team.doc?.country === 'Iran') paymentGateway.value = 'Zarinpal'
 	fetchExchangeRate()
 })
 </script>
