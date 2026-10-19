@@ -25,12 +25,27 @@ EXPIRES_IN = {
 # How long before another code may be sent to the same inbox.
 RESEND_AFTER = 30
 
+# How many wrong guesses a code survives. A code is six digits, so without a limit per
+# code a caller spread over many addresses could still guess it; the limits per address
+# do not see that.
+MAX_WRONG_GUESSES = 5
+
 # Spend a code, but only while it is still the code being presented. Reading,
 # comparing and deleting as three steps lets a code that has been replaced in
-# between still succeed, and take the replacement down with it.
+# between still succeed, and take the replacement down with it. A wrong guess is
+# counted in the same step, and the fifth one withdraws the code.
 SPEND = """
-if redis.call('GET', KEYS[1]) == ARGV[1] then
+local issued = redis.call('GET', KEYS[1])
+if issued == ARGV[1] then
+	redis.call('DEL', KEYS[2])
 	return redis.call('DEL', KEYS[1])
+end
+if issued then
+	local wrong = redis.call('INCR', KEYS[2])
+	redis.call('EXPIRE', KEYS[2], ARGV[3])
+	if wrong >= tonumber(ARGV[2]) then
+		redis.call('DEL', KEYS[1], KEYS[2])
+	end
 end
 return 0
 """
@@ -71,6 +86,10 @@ class OneTimePassword:
 	def resend_key(self) -> bytes:
 		return frappe.cache.make_key(f"press_otp_sent:{self.purpose}:{self.identifier}")
 
+	@property
+	def wrong_guesses_key(self) -> bytes:
+		return frappe.cache.make_key(f"press_otp_wrong:{self.purpose}:{self.identifier}")
+
 	def hashed(self, code: str | int) -> str:
 		return frappe.utils.sha256_hash(str(code))
 
@@ -80,6 +99,7 @@ class OneTimePassword:
 			code = "111111"
 
 		frappe.cache.set(self.key, self.hashed(code), ex=self.expires_in)
+		frappe.cache.delete(self.wrong_guesses_key)
 		self.hold_resend()
 
 		return code
@@ -102,10 +122,14 @@ class OneTimePassword:
 		by reading, so the check and the delete happen together in Redis and the
 		delete only lands on the code that was checked.
 		"""
-		return bool(frappe.cache.eval(SPEND, 1, self.key, self.hashed(code)))
+		return bool(
+			frappe.cache.eval(
+				SPEND, 2, self.key, self.wrong_guesses_key, self.hashed(code), MAX_WRONG_GUESSES, self.expires_in
+			)
+		)
 
 	def clear(self):
-		frappe.cache.delete(self.key)
+		frappe.cache.delete(self.key, self.wrong_guesses_key)
 
 	@property
 	def issued_recently(self) -> bool:

@@ -222,3 +222,37 @@ class TestSignupOtp(FrappeTestCase):
 			verify_otp(theirs.name, issued)
 
 		mine.signup_otp.clear()
+
+
+class TestOneTimePasswordWrongGuesses(FrappeTestCase):
+	def setUp(self):
+		super().setUp()
+		self.code = OneTimePassword(otp_purpose.LOGIN, "guessed@example.com")
+
+	def tearDown(self):
+		self.code.clear()
+		frappe.db.rollback()
+
+	def test_a_code_is_withdrawn_after_too_many_wrong_guesses(self):
+		issued = self.code.generate()
+
+		for _ in range(otp_purpose_limit()):
+			self.assertFalse(self.code.consume("000000" if issued != "000000" else "000001"))
+
+		# Even the right code no longer works
+		self.assertFalse(self.code.consume(issued))
+
+	def test_a_new_code_starts_with_a_clean_count(self):
+		self.code.generate()
+		for _ in range(otp_purpose_limit() - 1):
+			self.code.consume("not-the-code")
+
+		issued = self.code.generate()
+
+		self.assertTrue(self.code.consume(issued))
+
+
+def otp_purpose_limit() -> int:
+	from press.utils.otp import MAX_WRONG_GUESSES
+
+	return MAX_WRONG_GUESSES

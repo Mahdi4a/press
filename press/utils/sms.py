@@ -14,6 +14,20 @@ TIMEOUT = 15
 PHONE_EMAIL_DOMAIN = "phone.press.local"
 
 
+# Codes one number may be sent per hour and per day. SMS in Iran can arrive minutes late, so a
+# real user presses "resend" several times; texting a stranger over and over is what this stops.
+# Both can be set in site_config.json as sms_hourly_limit_per_mobile / sms_daily_limit_per_mobile.
+HOURLY_LIMIT_PER_MOBILE = 10
+DAILY_LIMIT_PER_MOBILE = 30
+COUNT_WINDOW = """
+local sent = redis.call('INCR', KEYS[1])
+if sent == 1 then
+	redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return sent
+"""
+
+
 class SMSNotConfigured(frappe.ValidationError):
 	pass
 
@@ -68,6 +82,15 @@ def setup_mobile_user(doc, method=None):
 
 def send_otp_to_mobile(mobile: str, code: str | int):
 	"""Queue an OTP SMS so how long delivery takes does not depend on the request."""
+	mobile = normalize_mobile(mobile)
+	for window, seconds, limit in (
+		("hour", 60 * 60, frappe.conf.get("sms_hourly_limit_per_mobile") or HOURLY_LIMIT_PER_MOBILE),
+		("day", 24 * 60 * 60, frappe.conf.get("sms_daily_limit_per_mobile") or DAILY_LIMIT_PER_MOBILE),
+	):
+		key = frappe.cache.make_key(f"press_sms_{window}:{mobile}")
+		if frappe.cache.eval(COUNT_WINDOW, 1, key, seconds) > int(limit):
+			frappe.throw("Too many codes have been sent to this number. Please try again later.")
+
 	frappe.enqueue(
 		"press.utils.sms.send_otp_sms",
 		queue="short",
