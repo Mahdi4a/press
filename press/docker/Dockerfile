@@ -237,7 +237,8 @@ RUN --mount=type=cache,target=/home/frappe/.cache,uid=1000,gid=1000 python${PYTH
 RUN --mount=type=cache,target=/home/frappe/.cache,uid=1000,gid=1000 python${PYTHON_VERSION} -m pip install Jinja2~=3.0.3
 RUN --mount=type=cache,target=/home/frappe/.cache,uid=1000,gid=1000 python${PYTHON_VERSION} -m pip install --upgrade setuptools
 
-RUN git config --global advice.detachedHead false
+RUN git config --global advice.detachedHead false \
+    && git config --global --add safe.directory '*'
 
 ENV PYTHONUNBUFFERED 1
 
