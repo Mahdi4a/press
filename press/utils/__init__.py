@@ -289,6 +289,9 @@ def get_country_info():
 
 	ip = frappe.local.request_ip
 	ip_api_key = frappe.conf.get("ip-api-key")
+	if not ip_api_key:
+		# pro.ip-api.com needs a paid key, and a request without one only waits for the timeout
+		return {}
 
 	def _get_country_info():
 		fields = [
@@ -319,12 +322,14 @@ def get_country_info():
 			"query",
 		]
 
-		res = requests.get(
-			"https://pro.ip-api.com/json/{ip}?key={key}&fields={fields}".format(
-				ip=ip, key=ip_api_key, fields=",".join(fields)
-			)
-		)
 		try:
+			# Signup waits on this lookup, so an unreachable service must not hold the request
+			res = requests.get(
+				"https://pro.ip-api.com/json/{ip}?key={key}&fields={fields}".format(
+					ip=ip, key=ip_api_key, fields=",".join(fields)
+				),
+				timeout=3,
+			)
 			data = res.json()
 			if data.get("status") != "fail":
 				return data
