@@ -25,6 +25,11 @@ from frappe.utils import now_datetime as now
 
 from press.press.doctype.ansible_play.ansible_play import AnsiblePlay
 
+try:
+	from ansible.plugins.loader import init_plugin_loader
+except ImportError:  # ansible-core older than 2.19 registers collections on its own
+	init_plugin_loader = None
+
 if typing.TYPE_CHECKING:
 	from press.press.doctype.agent_job.agent_job import AgentJob
 	from press.press.doctype.virtual_machine.virtual_machine import VirtualMachine
@@ -252,6 +257,9 @@ class Ansible:
 
 	def run(self) -> AnsiblePlay:
 		_ansible_local.current = self
+		if init_plugin_loader:
+			# Without this, short module names such as `filesystem` do not resolve to their collection
+			init_plugin_loader()
 		self.executor = PlaybookExecutor(
 			playbooks=[self.playbook_path],
 			inventory=self.inventory,
