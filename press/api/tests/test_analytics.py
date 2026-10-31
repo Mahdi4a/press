@@ -10,7 +10,14 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 from pytz import timezone as pytz_timezone
 
-from press.api.analytics import AggType, ResourceType, SlowLogGroupByChart, align_to_quarter_hour
+from press.api.analytics import (
+	AggType,
+	ResourceType,
+	SlowLogGroupByChart,
+	align_to_quarter_hour,
+	get_uptime,
+	get_usage,
+)
 
 TIMEZONE = "Asia/Kolkata"
 
@@ -159,3 +166,25 @@ class TestSlowQueriesWithoutLogServer(FrappeTestCase):
 			self.assertEqual(chart.run(), {"datasets": [], "labels": []})
 		finally:
 			frappe.db.set_single_value("Press Settings", "log_server", log_server)
+
+
+class TestUsageWithoutMonitoring(FrappeTestCase):
+	"""The Insights page iterates over these, so they must give lists even when nothing is set up"""
+
+	def setUp(self):
+		self.log_server = frappe.db.get_single_value("Press Settings", "log_server")
+		self.monitor_server = frappe.db.get_single_value("Press Settings", "monitor_server")
+		frappe.db.set_single_value("Press Settings", "log_server", "")
+		frappe.db.set_single_value("Press Settings", "monitor_server", "")
+
+	def tearDown(self):
+		frappe.db.set_single_value("Press Settings", "log_server", self.log_server)
+		frappe.db.set_single_value("Press Settings", "monitor_server", self.monitor_server)
+
+	def test_usage_is_an_empty_list_when_no_log_server_is_set(self):
+		start = datetime(2026, 8, 24, 10, 0)
+		self.assertEqual(get_usage("a.example.com", "request", TIMEZONE, start, start, 60), [])
+
+	def test_uptime_is_an_empty_list_when_no_monitor_server_is_set(self):
+		start = datetime(2026, 8, 24, 10, 0)
+		self.assertEqual(get_uptime("a.example.com", TIMEZONE, start, start, 60), [])

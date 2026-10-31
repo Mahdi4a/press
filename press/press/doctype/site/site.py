@@ -2389,11 +2389,16 @@ class Site(Document, TagHelpers):
 		if user == "Administrator":
 			password = get_decrypted_password("Site", self.name, "admin_password")
 			host = self.host_name or self.name
-			response = requests.post(
-				f"https://{host}/api/method/login",
-				data={"usr": user, "pwd": password},
-			)
-			sid = response.cookies.get("sid")
+			try:
+				response = requests.post(
+					f"https://{host}/api/method/login",
+					data={"usr": user, "pwd": password},
+					timeout=30,
+				)
+				sid = response.cookies.get("sid")
+			except requests.RequestException:
+				# the site isn't reachable (yet), the agent can still give us a session
+				sid = None
 		if not sid or sid == "Guest":
 			sid = self.get_sid_from_agent(user)
 		if not sid or sid == "Guest":
@@ -2642,7 +2647,12 @@ class Site(Document, TagHelpers):
 		if self.setup_wizard_complete:
 			return True
 
-		sid = self.get_login_sid()
+		try:
+			sid = self.get_login_sid()
+		except (requests.RequestException, frappe.ValidationError):
+			# the site isn't reachable yet, so setup can't have been checked
+			return False
+
 		conn = FrappeClient(f"https://{self.name}?sid={sid}")
 
 		try:
@@ -2653,7 +2663,11 @@ class Site(Document, TagHelpers):
 			# and raise json.JSONDecodeError
 			return False
 		except Exception:
-			if self.ping().status_code == requests.codes.ok:
+			try:
+				site_is_up = self.ping().status_code == requests.codes.ok
+			except requests.RequestException:
+				site_is_up = False
+			if site_is_up:
 				# Site is up but setup status fetch failed
 				log_error("Fetching Setup Status Failed", doc=self)
 			return False
