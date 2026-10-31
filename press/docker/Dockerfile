@@ -8,6 +8,11 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV OPENBLAS_NUM_THREADS 1
 ENV MKL_NUM_THREADS 1
 
+# files.pythonhosted.org does not resolve from the Iranian build server, so install from the mirror
+ENV PIP_INDEX_URL=https://repo.dev.pol-crm.ir/repository/pypi-proxy/simple/
+ENV UV_DEFAULT_INDEX=https://repo.dev.pol-crm.ir/repository/pypi-proxy/simple/
+ENV PIP_DEFAULT_TIMEOUT=120
+
 # Install essential packages
 RUN --mount=type=cache,sharing=locked,target=/var/cache/apt apt-get update \
   && apt-get install --yes --no-install-suggests --no-install-recommends \
