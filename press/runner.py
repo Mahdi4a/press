@@ -204,6 +204,10 @@ class AnsibleCallback(CallbackBase):
 
 class Ansible:
 	def __init__(self, server, playbook, user="root", variables=None, port=22):
+		if init_plugin_loader:
+			# The playbook is parsed below, so short module names such as `filesystem`
+			# must already resolve to their collection
+			init_plugin_loader()
 		self.server = server
 		self.playbook = playbook
 		self.playbook_path = frappe.get_app_path("press", "playbooks", self.playbook)
@@ -257,9 +261,6 @@ class Ansible:
 
 	def run(self) -> AnsiblePlay:
 		_ansible_local.current = self
-		if init_plugin_loader:
-			# Without this, short module names such as `filesystem` do not resolve to their collection
-			init_plugin_loader()
 		self.executor = PlaybookExecutor(
 			playbooks=[self.playbook_path],
 			inventory=self.inventory,
