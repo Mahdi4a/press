@@ -282,7 +282,8 @@ COPY --chown=frappe:frappe common_site_config.json /home/frappe/frappe-bench/sit
 # Chrome for Testing publishes no linux-arm64 build, so use Playwright's, as Frappe does.
 ARG CHROMIUM_URL=https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1157/chromium-headless-shell-linux-arm64.zip
 {% else %}
-ARG CHROMIUM_URL=https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.35/linux64/chrome-headless-shell-linux64.zip
+# storage.googleapis.com answers 403 to Iranian IPs, so use Playwright's CDN (same Chromium 133 build) here too.
+ARG CHROMIUM_URL=https://cdn.playwright.dev/dbazure/download/playwright/builds/chromium/1157/chromium-headless-shell-linux.zip
 {% endif %}
 RUN --mount=type=cache,sharing=locked,id=chromium-{% if is_arm_build %}arm64{% else %}x86_64{% endif %},target=/home/frappe/chromium-cache,uid=1000,gid=1000 \
   if [ ! -f /home/frappe/chromium-cache/chrome-linux/headless_shell ]; then \
