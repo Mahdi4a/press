@@ -43,5 +43,5 @@
 
 - name: Restart sshd service
   service:
-    name: sshd
+    name: ssh
     state: reloaded
