@@ -16,7 +16,8 @@
     - role: node_exporter
     - role: cadvisor
     - role: statsd_exporter
-    - role: filebeat
+    # artifacts.elastic.co answers 403 to Iranian IPs, so the apt key and repository cannot be added
+    # - role: filebeat
     - role: clamav
     - role: gpg_config
     - role: aide
