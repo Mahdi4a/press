@@ -1,0 +1,28 @@
+name: Build image on GitLab
+
+# The Press image is built by the GitLab pipeline of ezrunmanagement-crypto/frappe-press,
+# which clones this branch (see apps.json there). Tell GitLab whenever the branch moves.
+on:
+  push:
+    branches:
+      - feat/zarinpal-signalads-sms
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    env:
+      GITLAB_TRIGGER_TOKEN: ${{ secrets.GITLAB_TRIGGER_TOKEN }}
+    steps:
+      - name: Start the GitLab pipeline
+        if: env.GITLAB_TRIGGER_TOKEN != ''
+        run: |
+          curl --fail --show-error --silent --max-time 60 --retry 3 \
+            --request POST \
+            --form "token=${GITLAB_TRIGGER_TOKEN}" \
+            --form "ref=master" \
+            --form "variables[PRESS_COMMIT]=${GITHUB_SHA}" \
+            "https://gitlab.novinparva.com/api/v4/projects/358/trigger/pipeline"
+      - name: Skip, no trigger token
+        if: env.GITLAB_TRIGGER_TOKEN == ''
+        run: echo "GITLAB_TRIGGER_TOKEN is not set, so GitLab was not notified."
