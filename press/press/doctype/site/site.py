@@ -919,6 +919,8 @@ class Site(Document, TagHelpers):
 		return None
 
 	def rename_upstream(self, new_name: str):
+		if self.is_on_standalone:
+			return
 		proxy_server = frappe.db.get_value("Server", self.server, "proxy_server")
 		agent = Agent(proxy_server, server_type="Proxy Server")
 		site_domains = frappe.get_all(
@@ -1305,6 +1307,10 @@ class Site(Document, TagHelpers):
 				self.flags.new_site_agent_job_name = agent.new_site(self, create_user=user_details).name
 			else:
 				self.flags.new_site_agent_job_name = agent.new_site(self).name
+
+		if self.is_on_standalone:
+			# a standalone server has no proxy server, its own nginx already routes the site
+			return
 
 		server = frappe.get_all("Server", filters={"name": self.server}, fields=["proxy_server"], limit=1)[0]
 
@@ -2116,14 +2122,15 @@ class Site(Document, TagHelpers):
 		job = agent.archive_site(self, site_name, force, create_offsite_backup)
 		log_site_activity(self.name, "Archive", reason, job.name)
 
-		server = frappe.get_all("Server", filters={"name": self.server}, fields=["proxy_server"], limit=1)[0]
+		if not self.is_on_standalone:
+			server = frappe.get_all("Server", filters={"name": self.server}, fields=["proxy_server"], limit=1)[0]
 
-		agent = Agent(server.proxy_server, server_type="Proxy Server")
-		agent.remove_upstream_file(
-			server=self.server,
-			site=self.name,
-			site_name=site_name,
-		)
+			agent = Agent(server.proxy_server, server_type="Proxy Server")
+			agent.remove_upstream_file(
+				server=self.server,
+				site=self.name,
+				site_name=site_name,
+			)
 
 		self.db_set("host_name", None)
 		self.disable_subscription()
@@ -3282,6 +3289,8 @@ class Site(Document, TagHelpers):
 		agent.reset_site_usage(self)
 
 	def update_site_status_on_proxy(self, status, skip_reload=False):
+		if self.is_on_standalone:
+			return
 		proxy_server = frappe.db.get_value("Server", self.server, "proxy_server")
 		agent = Agent(proxy_server, server_type="Proxy Server")
 		agent.update_site_status(self.server, self.name, status, skip_reload=skip_reload)
