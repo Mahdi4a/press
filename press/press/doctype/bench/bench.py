@@ -667,12 +667,17 @@ class Bench(Document):
 	@frappe.whitelist()
 	def add_ssh_user(self):
 		proxy_server = frappe.db.get_value("Server", self.server, "proxy_server")
+		if not proxy_server:
+			# SSH to a bench goes through the proxy server; a standalone server has none
+			return
 		agent = Agent(proxy_server, server_type="Proxy Server")
 		agent.add_ssh_user(self)
 
 	@frappe.whitelist()
 	def remove_ssh_user(self):
 		proxy_server = frappe.db.get_value("Server", self.server, "proxy_server")
+		if not proxy_server:
+			return
 		agent = Agent(proxy_server, server_type="Proxy Server")
 		agent.remove_ssh_user(self)
 
