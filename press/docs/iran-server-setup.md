@@ -147,19 +147,56 @@ is idempotent and skips what is already done.
 - A **Database Server** record must exist and be linked from the Server.
   It is where Press reads the root password.
 - The Server needs a `team`, or the version list in the dashboard is empty.
-- Allow only the proxy to reach port 80. Docker publishes the container
-  ports itself, so this rule only covers the host nginx:
+- Check that nginx can read the bench files. nginx runs as `www-data`,
+  and `/home/frappe` is mode 750, so `www-data` must be in the `frappe`
+  group. The `nginx` role adds it during Setup, but a `frappe` user that was
+  created by hand skips that step. Without it the page loads, but every
+  `/assets/...` request returns 404 and `error.log` shows
+  `Permission denied (13)`:
 
   ```bash
-  iptables -A INPUT -p tcp --dport 80 -s <proxy ip> -j ACCEPT
-  iptables -A INPUT -p tcp --dport 80 -s 127.0.0.1 -j ACCEPT
-  iptables -A INPUT -p tcp --dport 80 -s 172.16.0.0/12 -j ACCEPT
-  iptables -A INPUT -p tcp --dport 80 -j DROP
-  apt install iptables-persistent && netfilter-persistent save
+  id www-data                       # must list frappe
+  usermod -aG frappe www-data && systemctl reload nginx
   ```
 
-  Keep 443 open. Press calls the agent on it. `iptables` here is the
-  nf_tables variant, which accepts one `-s` per rule.
+- Allow only the proxy to reach port 80. Frappe Cloud does this with a
+  cloud security group, which a plain VM does not have. Use a separate
+  nftables table, loaded by its own unit. Do **not** use `iptables-persistent`
+  or `iptables -A` on a host that runs Docker: saving and restoring the
+  rules wipes Docker's NAT chains, the published ports (`127.0.0.1:18001`)
+  stop answering, and nginx hangs on every request:
+
+  ```bash
+  cat > /etc/ezrun-firewall.nft <<'EOF'
+  table inet ezrun_fw {
+    chain input {
+      type filter hook input priority -10; policy accept;
+      tcp dport 80 ip saddr { <proxy ip>, 127.0.0.1, 172.16.0.0/12 } accept
+      tcp dport 80 drop
+    }
+  }
+  EOF
+  cat > /etc/systemd/system/ezrun-firewall.service <<'EOF'
+  [Unit]
+  Description=Allow port 80 only from the proxy
+  After=network.target
+
+  [Service]
+  Type=oneshot
+  RemainAfterExit=yes
+  ExecStartPre=-/usr/sbin/nft delete table inet ezrun_fw
+  ExecStart=/usr/sbin/nft -f /etc/ezrun-firewall.nft
+  ExecStop=/usr/sbin/nft delete table inet ezrun_fw
+
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+  systemctl daemon-reload && systemctl enable --now ezrun-firewall
+  ```
+
+  Keep 443 open. Press calls the agent on it. If the Docker NAT chains were
+  wiped by mistake, `systemctl restart docker` rebuilds them (check with
+  `nft list chain ip nat DOCKER`), then start the bench containers.
 - The agent's `config.json` on the app server must not contain
   `standalone` or `domain`, and `proxy_ip` must be the proxy IP, so
   `set_real_ip_from` trusts only the proxy.
@@ -194,6 +231,14 @@ curl -skI --resolve <site>:443:<proxy ip> https://<site>/ | grep -iE "^HTTP|^x-p
 
 Expect `HTTP/2 200` and an `x-proxy-upstream` header. New sites created by
 Press get this file automatically.
+
+Then load a CSS file from the same URL. A `404` on `/assets/...` while the
+page itself loads is a permission problem (section 5), not a stale cache:
+
+```bash
+curl -s https://<site>/login | grep -oE '/assets/[^"]+\.css' | head -n 1 \
+  | xargs -I{} curl -sI https://<site>{} | head -n 3
+```
 
 ## 7. Hardening after setup
 
