@@ -975,7 +975,7 @@
 	>
 		<LucideServer class="mx-auto mb-4 h-8 w-8" />
 		<p>Server feature isn't enabled for your account.</p>
-		<p>You need to have $200 worth of credits to enable this feature.</p>
+		<p>You need to have {{ serverCreditsRequired }} worth of credits to enable this feature.</p>
 		<p>
 			Please add it from
 			<router-link class="underline" :to="{ name: 'BillingOverview' }"
@@ -1313,7 +1313,7 @@ export default {
 									this.$team.doc.server_credit_threshold))
 					) {
 						throw new DashboardError(
-							'You need to have $200 worth of credits to create a server.',
+							`You need to have ${this.serverCreditsRequired} worth of credits to create a server.`,
 						)
 					}
 				},
@@ -1352,7 +1352,7 @@ export default {
 									this.$team.doc.server_credit_threshold))
 					) {
 						throw new DashboardError(
-							'You need to have $200 worth of credits to create a server.',
+							`You need to have ${this.serverCreditsRequired} worth of credits to create a server.`,
 						)
 					}
 				},
@@ -1426,6 +1426,13 @@ export default {
 		},
 	},
 	computed: {
+		serverCreditsRequired() {
+			const team = this.$team.doc;
+			if (team.currency === 'INR') return this.$format.currency(16000, 'INR', 0);
+			if (team.currency === 'IRT')
+				return this.$format.currency(team.server_credit_threshold, 'IRT', 0);
+			return this.$format.teamCurrency(200, 'USD', 0);
+		},
 		options() {
 			return this.$resources.options.data
 		},

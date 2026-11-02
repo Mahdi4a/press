@@ -69,6 +69,7 @@ import {
 	NumberChart,
 } from 'frappe-ui';
 import { inject, computed } from 'vue';
+import dayjs from '../utils/dayjs';
 
 export default {
 	name: 'BillingForecast',
@@ -88,11 +89,35 @@ export default {
 			auto: true,
 		});
 
+		// Iranian teams hold USD credit but read every amount in Toman
+		const tomanRate = computed(
+			() => (team.doc?.currency === 'USD' && team.doc?.toman_per_usd) || 1,
+		);
+
+		const scaled = (value) => {
+			if (typeof value === 'number') return Math.round(value * tomanRate.value);
+			if (value && typeof value === 'object') {
+				return Object.fromEntries(
+					Object.entries(value).map(([k, v]) => [k, scaled(v)]),
+				);
+			}
+			return value;
+		};
+
 		const forecastData = computed(() => {
-			return forecastResource.data;
+			const data = forecastResource.data;
+			if (!data || tomanRate.value === 1) return data;
+			return {
+				...data,
+				last_month_cost: scaled(data.last_month_cost),
+				current_month_to_date_cost: scaled(data.current_month_to_date_cost),
+				forecasted_month_end: scaled(data.forecasted_month_end),
+				usage_breakdown: scaled(data.usage_breakdown),
+			};
 		});
 
 		const currencySymbol = computed(() => {
+			if (tomanRate.value !== 1) return 'Toman';
 			return { INR: '₹', IRT: 'Toman' }[team.doc?.currency] || '$';
 		});
 
@@ -108,14 +133,10 @@ export default {
 
 			// Month Labels
 			const now = new Date();
-			const formatter = new Intl.DateTimeFormat('en-US', {
-				month: 'long',
-				year: 'numeric',
-			});
-			const currentMonthName = formatter.format(now);
-			const lastMonthName = formatter.format(
+			const currentMonthName = dayjs(now).format('MMMM YYYY');
+			const lastMonthName = dayjs(
 				new Date(now.getFullYear(), now.getMonth() - 1, 1),
-			);
+			).format('MMMM YYYY');
 
 			const {
 				last_month_usage_breakdown = {},

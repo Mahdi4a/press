@@ -34,10 +34,14 @@ export default {
 			return '';
 		},
 		minimumSpentAmount() {
-			return this.$team.doc?.country == 'India' ? '₹1800' : '$25';
+			return this.$team.doc?.country == 'India'
+				? '₹1800'
+				: this.$format.teamCurrency(25, 'USD', 0);
 		},
 		creditAmountInTeamCurrency() {
-			return this.$team.doc?.country == 'India' ? '₹750' : '$10';
+			return this.$team.doc?.country == 'India'
+				? '₹750'
+				: this.$format.teamCurrency(10, 'USD', 0);
 		},
 	},
 };

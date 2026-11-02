@@ -119,7 +119,7 @@
 				>
 					<lucide-info class="mr-4 inline-block h-6 w-6" />
 					<div>
-						You can only create USD 25 or higher plan sites in the bench.
+						You can only create sites on plans of {{ $format.teamCurrency(25, 'USD', 0) }} or higher in the bench.
 						<a
 							href="https://docs.frappe.io/cloud/benches#pricing"
 							target="_blank"
