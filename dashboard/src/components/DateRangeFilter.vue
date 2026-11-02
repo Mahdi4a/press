@@ -32,7 +32,7 @@ const PRESETS = [
 ];
 
 // The user picks days in their own timezone, but the server stores
-// datetimes in Asia/Calcutta. Convert the bounds of each day.
+// datetimes in the server timezone. Convert the bounds of each day.
 function dayStart(date) {
 	return dayjsIST(dayjs(date).startOf('day')).format(SERVER_DATETIME);
 }

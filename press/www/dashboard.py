@@ -38,6 +38,14 @@ def get_context_for_dev():
 	return get_boot()
 
 
+def use_jalali_dates() -> int:
+	"""Dates show as Jalali when iran_base is installed, unless Iran Settings turns it off."""
+	if not frappe.db.exists("DocType", "Iran Settings"):
+		return 0
+	value = frappe.db.get_single_value("Iran Settings", "use_jalali_dates")
+	return 1 if value is None else int(bool(int(value)))
+
+
 def get_boot():
 	default_team = get_default_team_for_user(frappe.session.user)
 	return frappe._dict(
@@ -48,6 +56,8 @@ def get_boot():
 		pulse_telemetry=pulse_boot_config(team=default_team),
 		press_site_name=frappe.conf.site,
 		site_name=frappe.local.site,
+		server_timezone=frappe.utils.get_system_timezone(),
+		jalali_dates=use_jalali_dates(),
 		default_team=default_team,
 		account_disabled=bool(get_disabled_team_of_user(frappe.session.user)),
 		valid_teams=get_valid_teams_for_user(frappe.session.user),
