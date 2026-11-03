@@ -41,6 +41,7 @@
 		"zarinpal_section",
 		"zarinpal_merchant_id",
 		"zarinpal_live",
+		"zarinpal_callback_url",
 		"zarinpal_allow_sandbox",
 		"zarinpal_column_break",
 		"zarinpal_toman_per_usd",
@@ -1987,6 +1988,13 @@
 			"fieldname": "zarinpal_live",
 			"fieldtype": "Check",
 			"label": "Zarinpal Live Mode"
+		},
+		{
+			"description": "Zarinpal sends the customer back to this address. It is shown for you to check; the site address in use is filled in when you save.",
+			"fieldname": "zarinpal_callback_url",
+			"fieldtype": "Data",
+			"label": "Zarinpal Callback URL",
+			"read_only": 1
 		},
 		{
 			"fieldname": "zarinpal_column_break",

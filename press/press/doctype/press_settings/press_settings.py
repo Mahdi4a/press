@@ -288,6 +288,7 @@ class PressSettings(Document):
 		wazuh_server: DF.Data | None
 		webroot_directory: DF.Data | None
 		zarinpal_allow_sandbox: DF.Check
+		zarinpal_callback_url: DF.Data | None
 		zarinpal_live: DF.Check
 		zarinpal_merchant_id: DF.Data | None
 		zarinpal_toman_per_usd: DF.Int
@@ -299,7 +300,14 @@ class PressSettings(Document):
 		"partnership_fee_usd",
 	)
 
+	def onload(self):
+		self.zarinpal_callback_url = self.get_zarinpal_callback_url()
+
+	def get_zarinpal_callback_url(self) -> str:
+		return f"{frappe.utils.get_url().rstrip('/')}/api/method/press.api.regional_payments.zarinpal.utils.verify_payment"
+
 	def validate(self):
+		self.zarinpal_callback_url = self.get_zarinpal_callback_url()
 		if self.max_concurrent_physical_restorations > 5:
 			frappe.throw("Please set Max Concurrent Physical Restorations to less than 5.")
 

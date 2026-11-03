@@ -12,6 +12,19 @@ def get_toman_per_usd() -> int:
 	return int(get_gateway_setting("zarinpal_toman_per_usd") or DEFAULT_TOMAN_PER_USD)
 
 
+def usd_to_toman(amount_usd: float) -> int:
+	"""The only place a USD amount becomes Toman. A Toman price is never passed through here."""
+	return int(round(amount_usd * get_toman_per_usd()))
+
+
+RIAL_PER_TOMAN = 10
+
+
+def toman_to_rial(amount_toman: float) -> int:
+	"""The only place Toman becomes Rial. Zarinpal is asked for Rial, so this is the amount it sees."""
+	return int(round(amount_toman * RIAL_PER_TOMAN))
+
+
 # Limits for teams billed in Toman, each its own Press Settings value with this default
 TOMAN_LIMIT_DEFAULTS = {
 	"minimum_credit_irt": 500_000,

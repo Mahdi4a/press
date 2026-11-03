@@ -7,7 +7,12 @@ import requests
 
 from press.guards import role_guard
 from press.utils import get_current_team
-from press.utils.gateway_settings import get_gateway_setting, get_toman_limit, get_toman_per_usd
+from press.utils.gateway_settings import (
+	get_gateway_setting,
+	get_toman_limit,
+	toman_to_rial,
+	usd_to_toman,
+)
 
 SANDBOX_API = "https://sandbox.zarinpal.com/pg/v4/payment"
 SANDBOX_START_PAY = "https://sandbox.zarinpal.com/pg/StartPay"
@@ -42,10 +47,6 @@ def _merchant_id() -> str:
 	if not merchant_id:
 		frappe.throw("Zarinpal is not configured. Set the Zarinpal Merchant ID in Press Settings.")
 	return merchant_id
-
-
-def _toman_per_usd() -> int:
-	return get_toman_per_usd()
 
 
 def _cache_key(authority: str) -> str:
@@ -97,7 +98,7 @@ def create_payment(amount: float):
 	team_currency = frappe.db.get_value("Team", team, "currency")
 	if amount < _minimum_amount(team_currency):
 		frappe.throw(f"Amount should be at least {_minimum_amount(team_currency)}")
-	amount_toman = int(round(amount if team_currency == "IRT" else amount * _toman_per_usd()))
+	amount_toman = int(round(amount)) if team_currency == "IRT" else usd_to_toman(amount)
 	api, start_pay = _urls()
 	# The bank sends the browser back to where the payment was started, so the login cookie
 	# of that address is still in effect
@@ -108,8 +109,7 @@ def create_payment(amount: float):
 			f"{api}/request.json",
 			json={
 				"merchant_id": _merchant_id(),
-				"amount": amount_toman,
-				"currency": "IRT",
+				"amount": toman_to_rial(amount_toman),
 				"description": f"Prepaid credits for {team}",
 				"callback_url": f"{origin}/api/method/press.api.regional_payments.zarinpal.utils.verify_payment",
 			},
@@ -169,7 +169,7 @@ def _verify_and_credit(authority: str, pending: dict) -> bool:
 			f"{api}/verify.json",
 			json={
 				"merchant_id": _merchant_id(),
-				"amount": pending["amount_toman"],
+				"amount": toman_to_rial(pending["amount_toman"]),
 				"authority": authority,
 			},
 			headers={"Accept": "application/json"},

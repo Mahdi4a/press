@@ -86,6 +86,25 @@ class TestZarinpalCallback(FrappeTestCase):
 		self.assertEqual(self.credits(), 0)
 
 
+class TestZarinpalAmount(FrappeTestCase):
+	def test_toman_is_sent_to_zarinpal_as_rial(self):
+		self.assertEqual(utils.toman_to_rial(500000), 5000000)
+
+	@patch.object(utils.requests, "post", return_value=verified())
+	def test_verify_asks_for_the_same_rial_amount_that_was_requested(self, post):
+		team = create_test_team()
+		with (
+			patch.object(utils, "_urls", return_value=(utils.LIVE_API, utils.LIVE_START_PAY)),
+			patch.object(utils, "_merchant_id", return_value="merchant"),
+		):
+			utils._verify_and_credit(AUTHORITY, {"team": team.name, "amount_credit": 1, "amount_toman": 700})
+
+		self.assertEqual(post.call_args.kwargs["json"]["amount"], 7000)
+		# The credit was committed, as the callback must, so remove it for real
+		frappe.db.delete("Balance Transaction", {"description": ("like", f"Zarinpal {AUTHORITY} %")})
+		frappe.db.commit()
+
+
 class TestZarinpalOrigin(FrappeTestCase):
 	def test_another_site_is_not_used_as_the_return_address(self):
 		own = frappe.utils.get_url().rstrip("/")
