@@ -38,7 +38,14 @@ from press.utils import (
 from press.utils import otp as otp_purpose
 from press.utils import user as user_utils
 from press.utils.otp import OneTimePassword
-from press.utils.sms import mobile_from_email, normalize_mobile, send_otp_to_mobile, user_for_mobile
+from press.utils.sms import (
+	mobile_from_email,
+	normalize_mobile,
+	require_phone_login,
+	send_otp_to_mobile,
+	team_for_mobile,
+	user_for_mobile,
+)
 from press.utils.telemetry import capture
 
 if TYPE_CHECKING:
@@ -63,8 +70,12 @@ def signup(
 		frappe.throw(_("Account {0} is already registered").format(email))
 
 	# A mobile number belongs to one account, even once its placeholder email has been replaced
-	if (mobile := mobile_from_email(email)) and user_for_mobile(mobile):
-		frappe.throw(_("Account {0} is already registered").format(email))
+	if mobile := mobile_from_email(email):
+		require_phone_login()
+		if user_for_mobile(mobile):
+			frappe.throw("این شماره موبایل قبلاً ثبت‌نام کرده است. وارد شوید.")
+		if team_for_mobile(mobile):
+			frappe.throw("این شماره موبایل به یک حساب با ایمیل تعلق دارد. با ایمیل وارد شوید.")
 
 	account_request = frappe.db.get_value(
 		"Account Request",

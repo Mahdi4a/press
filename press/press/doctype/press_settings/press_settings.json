@@ -34,6 +34,7 @@
 		"print_format",
 		"ic_key",
 		"signalads_section",
+		"phone_login_enabled",
 		"signalads_token",
 		"signalads_sender",
 		"signalads_column_break",
@@ -1947,6 +1948,13 @@
 			"fieldname": "signalads_section",
 			"fieldtype": "Section Break",
 			"label": "Signalads SMS"
+		},
+		{
+			"default": "1",
+			"description": "Let people sign up and log in with a mobile number and an SMS code. Untick to stop sending codes.",
+			"fieldname": "phone_login_enabled",
+			"fieldtype": "Check",
+			"label": "Phone Login Enabled"
 		},
 		{
 			"description": "Bearer token from the Signalads (Transmitor) panel",

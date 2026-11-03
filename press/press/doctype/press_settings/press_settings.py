@@ -203,6 +203,7 @@ class PressSettings(Document):
 		partnership_fee_irt: DF.Currency
 		partnership_fee_usd: DF.Int
 		paypal_enabled: DF.Check
+		phone_login_enabled: DF.Check
 		plausible_api_key: DF.Password | None
 		plausible_site_id: DF.Data | None
 		plausible_url: DF.Data | None

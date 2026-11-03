@@ -73,8 +73,37 @@ def setup_mobile_user(doc, method=None):
 		).insert(ignore_permissions=True)
 
 
+def phone_login_enabled() -> bool:
+	"""Press Settings > Phone Login Enabled. On until someone unticks it."""
+	value = get_gateway_setting("phone_login_enabled")
+	return value is None or bool(int(value))
+
+
+def require_phone_login():
+	if not phone_login_enabled():
+		frappe.throw("ورود با شماره موبایل فعلاً غیرفعال است.")
+
+
+def team_for_mobile(mobile: str) -> str | None:
+	"""A team whose stored phone number is this mobile, whatever way that number was typed.
+
+	Teams that signed up with an email keep a phone number but no mobile on their user, so
+	user_for_mobile does not see them."""
+	mobile = normalize_mobile(mobile)
+	for team, phone in frappe.get_all(
+		"Team",
+		filters={"phone_number": ("like", f"%{mobile[-4:]}%")},
+		fields=["name", "phone_number"],
+		as_list=True,
+	):
+		if try_normalize_mobile(phone) == mobile:
+			return team
+	return None
+
+
 def send_otp_to_mobile(mobile: str, code: str | int):
-	"""Queue an OTP SMS so how long delivery takes does not depend on the request."""
+	"""Send an OTP SMS now, so that a gateway that is down is told to the user and not swallowed."""
+	require_phone_login()
 	mobile = normalize_mobile(mobile)
 	for window, seconds, limit in (
 		("hour", 60 * 60, get_gateway_setting("sms_hourly_limit_per_mobile") or HOURLY_LIMIT_PER_MOBILE),
@@ -82,15 +111,13 @@ def send_otp_to_mobile(mobile: str, code: str | int):
 	):
 		key = frappe.cache.make_key(f"press_sms_{window}:{mobile}")
 		if frappe.cache.eval(COUNT_WINDOW, 1, key, seconds) > int(limit):
-			frappe.throw("Too many codes have been sent to this number. Please try again later.")
+			frappe.throw("برای این شماره بیش از حد مجاز کد ارسال شده است. لطفاً بعداً دوباره تلاش کنید.")
 
-	frappe.enqueue(
-		"press.utils.sms.send_otp_sms",
-		queue="short",
-		enqueue_after_commit=True,
-		mobile=mobile,
-		code=str(code),
-	)
+	try:
+		send_otp_sms(mobile, code)
+	except Exception:
+		frappe.log_error("OTP SMS could not be sent", "SMS Error")
+		frappe.throw("ارسال پیامک انجام نشد. لطفاً چند دقیقه دیگر دوباره تلاش کنید.")
 
 
 def _config() -> tuple[str, str]:
