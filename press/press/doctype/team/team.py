@@ -849,8 +849,9 @@ class Team(Document):
 		)
 
 	def create_stripe_customer(self):
-		# Teams paying through a local gateway can exist without a Stripe customer
-		if not self.stripe_customer_id and is_stripe_configured():
+		# Teams paying through a local gateway can exist without a Stripe customer. A Toman team
+		# pays through Zarinpal, so Stripe is never asked about it, even when Stripe is set up.
+		if not self.stripe_customer_id and self.currency != "IRT" and is_stripe_configured():
 			stripe = get_stripe()
 			customer = stripe.Customer.create(email=self.user, name=get_fullname(self.user))
 			self.stripe_customer_id = customer.id

@@ -78,3 +78,15 @@ class TestPhoneLogin(FrappeTestCase):
 		self.assertEqual(sms.team_for_mobile(MOBILE), team.name)
 		with self.assertRaises(frappe.ValidationError):
 			account.signup(sms.email_from_mobile(MOBILE))
+
+	def test_a_toman_team_never_gets_a_stripe_customer(self):
+		team = create_test_team()
+		team.currency = "IRT"
+
+		with (
+			patch("press.press.doctype.team.team.is_stripe_configured", return_value=True),
+			patch("press.press.doctype.team.team.get_stripe") as get_stripe,
+		):
+			team.create_stripe_customer()
+
+		get_stripe.assert_not_called()

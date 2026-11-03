@@ -231,15 +231,17 @@ class TestSubscription(FrappeTestCase):
 		site1 = create_test_site(team=self.team.name)
 		site1.free = 1
 		site1.save()
-		create_test_site(team=self.team.name)
+		site2 = create_test_site(team=self.team.name)
 
 		# test: site marked as free
 		free_sites = sites_with_free_hosting()
-		self.assertEqual(len(free_sites), 1)
+		self.assertIn(site1.name, free_sites)
+		self.assertNotIn(site2.name, free_sites)
 
 		self.team.free_account = True
 		self.team.save()
 
 		# test: site owned by free account
 		free_sites = sites_with_free_hosting()
-		self.assertEqual(len(free_sites), 2)
+		self.assertIn(site1.name, free_sites)
+		self.assertIn(site2.name, free_sites)

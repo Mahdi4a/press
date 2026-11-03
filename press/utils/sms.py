@@ -113,10 +113,17 @@ def send_otp_to_mobile(mobile: str, code: str | int):
 		if frappe.cache.eval(COUNT_WINDOW, 1, key, seconds) > int(limit):
 			frappe.throw("برای این شماره بیش از حد مجاز کد ارسال شده است. لطفاً بعداً دوباره تلاش کنید.")
 
+	if frappe.conf.developer_mode and frappe.local.dev_server:
+		# Same as the email path: a development server prints the code and sends nothing
+		print(f"Login OTP for {mobile}: {code}")
+		return
+
 	try:
 		send_otp_sms(mobile, code)
 	except Exception:
 		frappe.log_error("OTP SMS could not be sent", "SMS Error")
+		# Drop the gateway's own message, which is in English, so the user sees only this one
+		frappe.clear_messages()
 		frappe.throw("ارسال پیامک انجام نشد. لطفاً چند دقیقه دیگر دوباره تلاش کنید.")
 
 

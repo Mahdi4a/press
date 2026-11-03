@@ -63,6 +63,9 @@ def signup(
 	email = email.strip().lower()
 	exists, enabled = frappe.db.get_value("Team", {"user": email}, ["name", "enabled"]) or [0, 0]
 
+	if exists and enabled and mobile_from_email(email):
+		frappe.throw("این شماره موبایل قبلاً ثبت‌نام کرده است. وارد شوید.")
+
 	account_request = None
 	if exists and not enabled:
 		frappe.throw(_("Account {0} has been deactivated").format(email))
