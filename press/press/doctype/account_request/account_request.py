@@ -191,7 +191,7 @@ class AccountRequest(Document):
 	@property
 	def signup_otp(self) -> OneTimePassword:
 		"""Proves the address on this request. Only good for finishing this signup."""
-		return OneTimePassword(otp_purpose.SIGNUP, self.name)
+		return OneTimePassword(otp_purpose.SIGNUP, self.name, mobile=mobile_from_email(self.email))
 
 	def ensure_request_key(self) -> str:
 		"""The key the setup-account link is built from. Expires on its own."""
@@ -219,7 +219,9 @@ class AccountRequest(Document):
 			return
 
 		if mobile := mobile_from_email(self.email):
-			send_otp_to_mobile(mobile, otp)
+			# Signalads sends the code itself, and hands none to send, when it makes it
+			if otp:
+				send_otp_to_mobile(mobile, otp)
 			return
 
 		subject = f"{otp} - OTP for Frappe Cloud Account Verification"

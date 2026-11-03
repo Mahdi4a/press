@@ -101,10 +101,8 @@ def team_for_mobile(mobile: str) -> str | None:
 	return None
 
 
-def send_otp_to_mobile(mobile: str, code: str | int):
-	"""Send an OTP SMS now, so that a gateway that is down is told to the user and not swallowed."""
-	require_phone_login()
-	mobile = normalize_mobile(mobile)
+def count_codes_sent(mobile: str):
+	"""Count one code to this number against its hourly and daily limits, or refuse."""
 	for window, seconds, limit in (
 		("hour", 60 * 60, get_gateway_setting("sms_hourly_limit_per_mobile") or HOURLY_LIMIT_PER_MOBILE),
 		("day", 24 * 60 * 60, get_gateway_setting("sms_daily_limit_per_mobile") or DAILY_LIMIT_PER_MOBILE),
@@ -112,6 +110,13 @@ def send_otp_to_mobile(mobile: str, code: str | int):
 		key = frappe.cache.make_key(f"press_sms_{window}:{mobile}")
 		if frappe.cache.eval(COUNT_WINDOW, 1, key, seconds) > int(limit):
 			frappe.throw("برای این شماره بیش از حد مجاز کد ارسال شده است. لطفاً بعداً دوباره تلاش کنید.")
+
+
+def send_otp_to_mobile(mobile: str, code: str | int):
+	"""Send an OTP SMS now, so that a gateway that is down is told to the user and not swallowed."""
+	require_phone_login()
+	mobile = normalize_mobile(mobile)
+	count_codes_sent(mobile)
 
 	if frappe.conf.developer_mode and frappe.local.dev_server:
 		# Same as the email path: a development server prints the code and sends nothing
@@ -127,10 +132,85 @@ def send_otp_to_mobile(mobile: str, code: str | int):
 		frappe.throw("ارسال پیامک انجام نشد. لطفاً چند دقیقه دیگر دوباره تلاش کنید.")
 
 
-def _config() -> tuple[str, str]:
+def otp_service_enabled() -> bool:
+	"""Press Settings > Signalads OTP Service. Off until someone ticks it."""
+	return bool(int(get_gateway_setting("signalads_use_otp_service") or 0))
+
+
+def _otp_service_failed(what: str):
+	frappe.log_error(f"Signalads OTP service: {what}", "SMS Error")
+	frappe.clear_messages()
+	frappe.throw("سرویس پیامک در دسترس نیست. لطفاً چند دقیقه دیگر دوباره تلاش کنید.")
+
+
+def service_send_otp(mobile: str) -> tuple[str, int]:
+	"""Have Signalads make a code and text it. Returns (session uuid, seconds the code stays good)."""
+	require_phone_login()
+	mobile = normalize_mobile(mobile)
+	count_codes_sent(mobile)
+
+	token, _sender = _config(need_sender=False)
+	body = {"mobile": mobile}
+	if pattern_id := get_gateway_setting("signalads_otp_pattern_id"):
+		body["pattern_id"] = int(pattern_id)
+
+	try:
+		response = requests.post(
+			f"{SIGNALADS_BASE_URL}/api_v1/otp/send",
+			headers={"Authorization": f"Bearer {token}"},
+			json=body,
+			timeout=TIMEOUT,
+		)
+		data = response.json() if response.ok else {}
+	except (requests.RequestException, ValueError):
+		_otp_service_failed("send could not be made")
+
+	if not data.get("uuid"):
+		_otp_service_failed(f"send answered {response.status_code}: {response.text[:200]}")
+
+	return data["uuid"], _seconds_until(data.get("expire_at"))
+
+
+def _seconds_until(expire_at: str | None) -> int:
+	"""Seconds left until an ISO time with its offset, at least 1. Five minutes when it is missing."""
+	from datetime import datetime, timezone
+
+	try:
+		left = (datetime.fromisoformat(expire_at) - datetime.now(timezone.utc)).total_seconds()
+	except (TypeError, ValueError):
+		return 5 * 60
+	return max(1, int(left))
+
+
+def service_verify_otp(uuid: str, code: str | int) -> bool:
+	"""Ask Signalads whether the code is the one it sent for this session."""
+	token, _sender = _config(need_sender=False)
+	try:
+		response = requests.post(
+			f"{SIGNALADS_BASE_URL}/api_v1/otp/verify",
+			headers={"Authorization": f"Bearer {token}"},
+			json={"uuid": uuid, "code": str(code)},
+			timeout=TIMEOUT,
+		)
+	except requests.RequestException:
+		_otp_service_failed("verify could not be made")
+
+	# A wrong, expired or locked-out code is answered as a client error: simply not verified
+	if response.status_code in (400, 404, 422):
+		return False
+	if not response.ok:
+		_otp_service_failed(f"verify answered {response.status_code}: {response.text[:200]}")
+	try:
+		return bool(response.json().get("verified"))
+	except ValueError:
+		_otp_service_failed("verify answered something that is not JSON")
+		return False
+
+
+def _config(need_sender: bool = True) -> tuple[str, str]:
 	token = get_gateway_setting("signalads_token", password=True)
 	sender = get_gateway_setting("signalads_sender")
-	if not (token and sender):
+	if not (token and (sender or not need_sender)):
 		frappe.throw(
 			"SMS is not configured. Set the Signalads API token and sender number in Press Settings.",
 			SMSNotConfigured,

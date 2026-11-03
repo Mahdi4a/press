@@ -218,7 +218,7 @@ def resend_otp(account_request: str):
 def send_otp(email: str, for_2fa_keys: bool = False):
 	email, mobile = resolve_login_user(email)
 	purpose = otp_purpose.TWO_FACTOR_RECOVERY if for_2fa_keys else otp_purpose.LOGIN
-	code = OneTimePassword(purpose, email)
+	code = OneTimePassword(purpose, email, mobile=mobile)
 	throttle_otp(code)
 
 	# Answer an unknown address the same way, throttle included, so the response
@@ -244,6 +244,10 @@ def send_otp_mail(email: str, otp: str, for_login: bool = True, mobile: str | No
 		return
 
 	if frappe.flags.in_test:
+		return
+
+	if not otp:
+		# Signalads made the code and has already texted it
 		return
 
 	mobile = mobile or mobile_from_email(email)
@@ -529,10 +533,15 @@ def get_contact_info():
 def request_contact_otp(kind: str, value: str):
 	"""Send a code to the email or mobile number the user wants to add to their account."""
 	value = _checked_new_contact(kind, value)
-	code = OneTimePassword(otp_purpose.ADD_CONTACT, f"{frappe.session.user}:{value}")
+	code = OneTimePassword(
+		otp_purpose.ADD_CONTACT, f"{frappe.session.user}:{value}", mobile=value if kind == "mobile" else None
+	)
 	throttle_otp(code)
 
 	otp = code.generate()
+	if not otp:
+		# Signalads made the code and has already texted it
+		return
 	if kind == "mobile":
 		send_otp_to_mobile(value, otp)
 	else:
@@ -1604,7 +1613,9 @@ def get_2fa_recovery_codes(verification_code: int):
 	if not frappe.db.exists("User 2FA", {"user": frappe.session.user, "enabled": 1}):
 		frappe.throw("2FA is not enabled for this user")
 
-	code = OneTimePassword(otp_purpose.TWO_FACTOR_RECOVERY, frappe.session.user)
+	code = OneTimePassword(
+		otp_purpose.TWO_FACTOR_RECOVERY, frappe.session.user, mobile=mobile_from_email(frappe.session.user)
+	)
 	if not code.consume(verification_code):
 		frappe.throw("Invalid OTP. Please try again.")
 

@@ -240,6 +240,7 @@ class PressSettings(Document):
 		servers_using_alternative_http_port_for_communication: DF.SmallText | None
 		set_redis_password: DF.Check
 		shared_directory: DF.Data | None
+		signalads_use_otp_service: DF.Check
 		signalads_otp_pattern_id: DF.Int
 		sms_daily_limit_per_mobile: DF.Int
 		sms_hourly_limit_per_mobile: DF.Int

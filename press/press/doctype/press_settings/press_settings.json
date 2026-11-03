@@ -35,6 +35,7 @@
 		"ic_key",
 		"signalads_section",
 		"phone_login_enabled",
+		"signalads_use_otp_service",
 		"signalads_token",
 		"signalads_sender",
 		"signalads_column_break",
@@ -1955,6 +1956,13 @@
 			"fieldname": "phone_login_enabled",
 			"fieldtype": "Check",
 			"label": "Phone Login Enabled"
+		},
+		{
+			"default": "0",
+			"description": "Signalads makes, sends and checks the code for mobile numbers. Codes for emails stay with Press. The sender number is not needed for this.",
+			"fieldname": "signalads_use_otp_service",
+			"fieldtype": "Check",
+			"label": "Signalads OTP Service"
 		},
 		{
 			"description": "Bearer token from the Signalads (Transmitor) panel",

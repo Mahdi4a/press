@@ -22,6 +22,9 @@ EXPIRES_IN = {
 	ADD_CONTACT: 10 * 60,
 }
 
+# What is kept in place of a code's hash when Signalads made the code: this, then its session uuid.
+SERVICE_PREFIX = "svc:"
+
 # How long before another code may be sent to the same inbox.
 RESEND_AFTER = 30
 
@@ -73,10 +76,22 @@ class OneTimePassword:
 	compare.
 	"""
 
-	def __init__(self, purpose: str, identifier: str):
+	def __init__(self, purpose: str, identifier: str, mobile: str | None = None):
 		self.purpose = purpose
 		self.identifier = identifier
+		# The mobile number the code goes to, when it goes to one. Only then can Signalads make it.
+		self.mobile = mobile
 		self.expires_in = EXPIRES_IN[purpose]
+
+	@property
+	def via_service(self) -> bool:
+		"""Whether Signalads makes and checks this code. Emails always get a code of ours."""
+		from press.utils.sms import otp_service_enabled
+
+		if not (self.mobile and otp_service_enabled()):
+			return False
+		# A development server prints a fixed code and sends nothing, as for emails
+		return not (frappe.conf.developer_mode and frappe.local.dev_server)
 
 	@property
 	def key(self) -> bytes:
@@ -94,6 +109,17 @@ class OneTimePassword:
 		return frappe.utils.sha256_hash(str(code))
 
 	def generate(self) -> str:
+		"""A new code. Returns it for the caller to send, or "" when Signalads has already sent it."""
+		if self.via_service:
+			from press.utils.sms import service_send_otp
+
+			uuid, seconds = service_send_otp(self.mobile)
+			# What is kept is the Signalads session, not a code: it is the one to ask when this is spent
+			frappe.cache.set(self.key, f"{SERVICE_PREFIX}{uuid}", ex=seconds)
+			frappe.cache.delete(self.wrong_guesses_key)
+			self.hold_resend()
+			return ""
+
 		code = str(generate_otp())
 		if frappe.conf.developer_mode and frappe.local.dev_server:
 			code = "111111"
@@ -122,11 +148,30 @@ class OneTimePassword:
 		by reading, so the check and the delete happen together in Redis and the
 		delete only lands on the code that was checked.
 		"""
+		issued = frappe.cache.get(self.key)
+		if issued is not None and issued.startswith(SERVICE_PREFIX.encode()):
+			return self._consume_with_service(issued.decode()[len(SERVICE_PREFIX) :], code)
+
 		return bool(
 			frappe.cache.eval(
 				SPEND, 2, self.key, self.wrong_guesses_key, self.hashed(code), MAX_WRONG_GUESSES, self.expires_in
 			)
 		)
+
+	def _consume_with_service(self, uuid: str, code: str | int) -> bool:
+		"""Spend a code Signalads made. Signalads ends the session on success; a wrong guess is
+		counted here too, and the fifth withdraws the session as for our own codes."""
+		from press.utils.sms import service_verify_otp
+
+		if service_verify_otp(uuid, code):
+			self.clear()
+			return True
+
+		wrong = frappe.cache.incr(self.wrong_guesses_key)
+		frappe.cache.expire(self.wrong_guesses_key, self.expires_in)
+		if wrong >= MAX_WRONG_GUESSES:
+			self.clear()
+		return False
 
 	def clear(self):
 		frappe.cache.delete(self.key, self.wrong_guesses_key)
