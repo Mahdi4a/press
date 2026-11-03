@@ -77,7 +77,26 @@ def before_job():
 	frappe.local.system_user = _system_user
 
 
+def use_configured_scheme():
+	"""Treat the request as https when `host_name` says the site is served over https.
+
+	TLS ends at a proxy in front of the site, and a hop on the way can pass the request on as
+	plain http. Frappe then builds absolute URLs, such as the OAuth metadata issuer, with http://,
+	which strict clients refuse. Only a request for the configured host is changed.
+	"""
+	host_name = frappe.conf.get("host_name") or ""
+	request = getattr(frappe.local, "request", None)
+	if not (host_name.startswith("https://") and request):
+		return
+
+	if request.scheme != "https" and request.host == host_name[len("https://") :].rstrip("/"):
+		# Werkzeug reads the scheme once, when the request is made, and builds every URL from it
+		request.scheme = "https"
+		request.environ["wsgi.url_scheme"] = "https"
+
+
 def before_request():
+	use_configured_scheme()
 	frappe.local._current_team = None
 	frappe.local.team = _get_current_team
 	frappe.local.system_user = _system_user
