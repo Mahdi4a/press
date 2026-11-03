@@ -46,7 +46,7 @@
    "doc_view": "List",
    "label": "Server Plan",
    "link_to": "Server Plan",
-   "stats_filter": "[[\"Server Plan\",\"enabled\",\"=\",1,false]]",
+   "stats_filter": "[[\"Server Plan\",\"enabled\",\"=\",1]]",
    "type": "DocType"
   },
   {
@@ -62,7 +62,7 @@
    "doc_view": "List",
    "label": "Team",
    "link_to": "Team",
-   "stats_filter": "[[\"Team\",\"enabled\",\"=\",1,false]]",
+   "stats_filter": "[[\"Team\",\"enabled\",\"=\",1]]",
    "type": "DocType"
   },
   {
@@ -79,7 +79,7 @@
    "format": "",
    "label": "Active Sites",
    "link_to": "Site",
-   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
@@ -87,7 +87,7 @@
    "doc_view": "List",
    "label": "Site Plan",
    "link_to": "Site Plan",
-   "stats_filter": "[[\"Site Plan\",\"enabled\",\"=\",1,false]]",
+   "stats_filter": "[[\"Site Plan\",\"enabled\",\"=\",1]]",
    "type": "DocType"
   },
   {
@@ -95,7 +95,7 @@
    "doc_view": "List",
    "label": "Active Benches",
    "link_to": "Bench",
-   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
@@ -111,7 +111,7 @@
    "doc_view": "List",
    "label": "Tls Certificate",
    "link_to": "TLS Certificate",
-   "stats_filter": "[[\"TLS Certificate\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"TLS Certificate\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
@@ -128,7 +128,7 @@
    "format": "",
    "label": "Broken Sites",
    "link_to": "Site",
-   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Broken\",false]]",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Broken\"]]",
    "type": "DocType"
   },
   {
@@ -136,7 +136,7 @@
    "doc_view": "List",
    "label": "Broken Benches",
    "link_to": "Bench",
-   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Broken\",false]]",
+   "stats_filter": "[[\"Bench\",\"status\",\"=\",\"Broken\"]]",
    "type": "DocType"
   },
   {
@@ -153,7 +153,7 @@
    "format": "",
    "label": "Pending Sites",
    "link_to": "Site",
-   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Pending\",false]]",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Pending\"]]",
    "type": "DocType"
   },
   {
@@ -161,7 +161,7 @@
    "doc_view": "List",
    "label": "Application Server",
    "link_to": "Server",
-   "stats_filter": "[[\"Server\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Server\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
@@ -178,7 +178,7 @@
    "format": "",
    "label": "Suspended Sites",
    "link_to": "Site",
-   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Suspended\",false]]",
+   "stats_filter": "[[\"Site\",\"status\",\"=\",\"Suspended\"]]",
    "type": "DocType"
   },
   {
@@ -186,7 +186,7 @@
    "doc_view": "List",
    "label": "Database Server",
    "link_to": "Database Server",
-   "stats_filter": "[[\"Database Server\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Database Server\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
@@ -202,7 +202,7 @@
    "doc_view": "List",
    "label": "Proxy Server",
    "link_to": "Proxy Server",
-   "stats_filter": "[[\"Proxy Server\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Proxy Server\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
@@ -210,7 +210,7 @@
    "doc_view": "List",
    "label": "Hybrid Servers",
    "link_to": "Self Hosted Server",
-   "stats_filter": "[[\"Self Hosted Server\",\"status\",\"=\",\"Active\",false]]",
+   "stats_filter": "[[\"Self Hosted Server\",\"status\",\"=\",\"Active\"]]",
    "type": "DocType"
   },
   {
