@@ -79,8 +79,8 @@
 			"fieldtype": "Currency",
 			"in_list_view": 1,
 			"label": "Price (INR)",
-			"options": "INR",
-			"reqd": 1
+			"description": "Billed only to teams whose currency is INR. Teams billed in Toman use Price (IRT) and ignore this.",
+			"options": "INR"
 		},
 		{ "fieldname": "column_break_5", "fieldtype": "Column Break" },
 		{
