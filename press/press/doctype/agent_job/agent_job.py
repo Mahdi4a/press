@@ -14,6 +14,7 @@ from frappe.model.document import Document
 from frappe.monitor import add_data_to_monitor
 from frappe.utils import (
 	add_days,
+	add_to_date,
 	cint,
 	convert_utc_to_system_timezone,
 	cstr,
@@ -1432,3 +1433,38 @@ def cancel_job_from_dashboard(name: str):
 
 	job.validate_dashboard_cancellation()
 	job.cancel_job()
+
+
+def stuck_undelivered_jobs(older_than_hours: int = 1) -> dict[str, dict[str, int]]:
+	"""Jobs that never reached their server's agent, by server and job type.
+
+	Counts jobs still Undelivered after `older_than_hours`, and jobs given up as Delivery
+	Failure in the last day. Both mean the agent could not be reached.
+	"""
+	stuck: dict[str, dict[str, int]] = {}
+	for status, filters in (
+		("Undelivered", {"creation": ("<", add_to_date(None, hours=-older_than_hours))}),
+		("Delivery Failure", {"modified": (">", add_days(None, -1))}),
+	):
+		for job in frappe.get_all(
+			"Agent Job",
+			filters={"status": status, **filters},
+			fields=["server", "job_type"],
+			ignore_ifnull=True,
+		):
+			by_type = stuck.setdefault(job.server, {})
+			by_type[job.job_type] = by_type.get(job.job_type, 0) + 1
+	return stuck
+
+
+def alert_undelivered_jobs():
+	"""Daily. A server whose agent cannot be reached shows up in the Error Log, not only in a
+	list nobody opens, because its jobs sit Undelivered until they are failed after two days."""
+	stuck = stuck_undelivered_jobs()
+	if not stuck:
+		return
+	lines = [
+		f"{server}: " + ", ".join(f"{job_type} x{count}" for job_type, count in sorted(types.items()))
+		for server, types in sorted(stuck.items())
+	]
+	log_error(title="Undelivered Agent Jobs", message="\n".join(lines))

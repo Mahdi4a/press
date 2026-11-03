@@ -212,6 +212,7 @@ scheduler_events = {
 	"weekly_long": ["press.press.doctype.marketplace_app.events.auto_review_for_missing_steps"],
 	"daily": [
 		"press.press.doctype.subscription.subscription.check_missing_usage_records",
+		"press.press.doctype.agent_job.agent_job.alert_undelivered_jobs",
 		"press.experimental.doctype.referral_bonus.referral_bonus.credit_referral_bonuses",
 		"press.press.doctype.log_counter.log_counter.record_counts",
 		"press.press.doctype.site_version_audit.site_version_audit.record_audit",

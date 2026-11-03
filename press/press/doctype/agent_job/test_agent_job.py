@@ -19,6 +19,7 @@ from frappe.utils import add_days
 from press.agent import Agent
 from press.overrides import before_request
 from press.press.doctype.agent_job.agent_job import (
+	stuck_undelivered_jobs,
 	AgentJob,
 	cancel_job_from_dashboard,
 	fail_old_jobs,
@@ -855,3 +856,27 @@ class TestAgentJobOutputRedaction(FrappeTestCase):
 		values = set_value.call_args.args[2]
 		for field in ("output", "traceback", "data"):
 			self.assertNotIn("leaked", values[field])
+
+
+class TestStuckUndeliveredJobs(FrappeTestCase):
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def test_old_undelivered_job_is_reported_by_server_and_type(self):
+		job = create_test_agent_job(status="Undelivered")
+		frappe.db.set_value("Agent Job", job.name, "creation", add_days(None, -1))
+
+		stuck = stuck_undelivered_jobs()
+
+		self.assertEqual(stuck[job.server][job.job_type], 1)
+
+	def test_a_job_that_was_just_created_is_not_reported(self):
+		job = create_test_agent_job(status="Undelivered")
+
+		self.assertNotIn(job.server, stuck_undelivered_jobs())
+
+	def test_a_delivered_job_is_not_reported(self):
+		job = create_test_agent_job(status="Success", job_id=1)
+		frappe.db.set_value("Agent Job", job.name, "creation", add_days(None, -1))
+
+		self.assertNotIn(job.server, stuck_undelivered_jobs())
