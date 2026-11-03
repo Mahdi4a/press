@@ -22,13 +22,23 @@ def _identity(mobile):
 	return f"{sms.normalize_mobile(mobile)}@phone.press.local"
 
 
-def _service():
+def _service(pattern_id=None):
 	token = os.environ.get("SIGNALADS_TOKEN")
 	if not token:
 		raise SystemExit("Set SIGNALADS_TOKEN first")
+
+	real_setting = sms.get_gateway_setting
+
+	def setting(fieldname, *args, **kwargs):
+		# An unset pattern in Press Settings reads as 0, which would win over any site config
+		if fieldname == "signalads_otp_pattern_id" and pattern_id:
+			return pattern_id
+		return real_setting(fieldname, *args, **kwargs)
+
 	return (
 		patch.object(sms, "otp_service_enabled", return_value=True),
 		patch.object(sms, "_config", return_value=(token, "")),
+		patch.object(sms, "get_gateway_setting", side_effect=setting),
 		# Press logs why and tells the user only that the service is down; here, show why
 		patch.object(sms, "_otp_service_failed", side_effect=_show_why),
 	)
@@ -39,17 +49,15 @@ def _show_why(what):
 
 
 def send(mobile, pattern_id=None):
-	if pattern_id:
-		frappe.conf["signalads_otp_pattern_id"] = pattern_id
-	enabled, config, why = _service()
-	with enabled, config, why:
+	enabled, config, setting, why = _service(pattern_id)
+	with enabled, config, setting, why:
 		code = OneTimePassword(otp_purpose.LOGIN, _identity(mobile), mobile=mobile)
 		print("handed over for Press to send:", repr(code.generate()))
 		print("kept in the cache:", frappe.cache.get(code.key), "good for", frappe.cache.ttl(code.key), "s")
 
 
 def check(mobile, code):
-	enabled, config, why = _service()
-	with enabled, config, why:
+	enabled, config, setting, why = _service()
+	with enabled, config, setting, why:
 		spent = OneTimePassword(otp_purpose.LOGIN, _identity(mobile), mobile=mobile).consume(code)
 		print("Signalads confirmed the code:", spent)
