@@ -8,7 +8,11 @@ import frappe
 from frappe.tests.utils import FrappeTestCase
 
 from press.press.doctype.site.test_site import create_test_site
-from press.press.doctype.subscription.subscription import sites_with_free_hosting
+from press.press.doctype.subscription.subscription import (
+	paid_plans,
+	sites_with_free_hosting,
+	subscriptions_missing_usage_record,
+)
 from press.press.doctype.team.test_team import create_test_team
 
 
@@ -93,6 +97,60 @@ class TestSubscription(FrappeTestCase):
 
 		invoice = frappe.get_doc("Invoice", {"team": self.team.name, "status": "Draft"})
 		self.assertEqual(invoice.total, desired_value)
+
+	def _daily_site_subscription(self, plan_name: str, price_irt: float = 0):
+		site = create_test_site()
+		site.db_set("status", "Active")
+		plan = frappe.get_doc(
+			doctype="Site Plan",
+			name=plan_name,
+			document_type="Site",
+			interval="Daily",
+			period=30,
+			price_usd=0,
+			price_inr=0,
+			price_irt=price_irt,
+		).insert()
+		return frappe.get_doc(
+			doctype="Subscription",
+			team=self.team.name,
+			document_type="Site",
+			document_name=site.name,
+			plan_type="Site Plan",
+			plan=plan.name,
+		).insert()
+
+	def test_plan_priced_only_in_toman_is_paid(self):
+		plan = frappe.get_doc(
+			doctype="Site Plan",
+			name="Plan-Toman",
+			document_type="ToDo",
+			price_usd=0,
+			price_inr=0,
+			price_irt=500000,
+		).insert()
+		free = frappe.get_doc(
+			doctype="Site Plan", name="Plan-Zero", document_type="ToDo", price_usd=0, price_inr=0
+		).insert()
+
+		self.assertIn(plan.name, paid_plans())
+		self.assertNotIn(free.name, paid_plans())
+
+	def test_missing_usage_record_is_reported_until_it_exists(self):
+		subscription = self._daily_site_subscription("Plan-Gap", price_irt=500000)
+		today = frappe.utils.getdate()
+
+		self.assertIn(subscription.name, subscriptions_missing_usage_record(today))
+
+		with patch.object(frappe.utils, "today", return_value=today):
+			subscription.create_usage_record()
+
+		self.assertNotIn(subscription.name, subscriptions_missing_usage_record(today))
+
+	def test_zero_price_subscription_is_never_reported_missing(self):
+		subscription = self._daily_site_subscription("Plan-Free")
+
+		self.assertNotIn(subscription.name, subscriptions_missing_usage_record(frappe.utils.getdate()))
 
 	def test_subscription_for_non_chargeable_document(self):
 		todo = frappe.get_doc(doctype="ToDo", description="Test todo").insert()

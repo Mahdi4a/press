@@ -362,6 +362,12 @@ def create_usage_records_of_date(
 			log_error(title="Create Usage Record Error", name=name)
 
 
+def _has_price(doctype):
+	"""A plan is paid when it costs something in any currency. Looking at the Rupee price alone
+	would skip a plan priced only in Toman and nothing would say so."""
+	return (doctype.price_usd > 0) | (doctype.price_inr > 0) | (doctype.price_irt > 0)
+
+
 def paid_plans():
 	paid_plans = []
 
@@ -381,7 +387,7 @@ def paid_plans():
 			paid_plans += (
 				frappe.qb.from_(doctype)
 				.select(doctype.name)
-				.where(doctype.price_inr > 0)
+				.where(_has_price(doctype))
 				.where((doctype.enabled == 1) | (doctype.legacy_plan == 1))
 				.run(pluck=True)
 			)
@@ -389,7 +395,7 @@ def paid_plans():
 			paid_plans += (
 				frappe.qb.from_(doctype)
 				.select(doctype.name)
-				.where(doctype.price_inr > 0)
+				.where(_has_price(doctype))
 				.where(doctype.enabled == 1)
 				.run(pluck=True)
 			)
@@ -445,3 +451,43 @@ def created_usage_records(free_sites, date=None):
 
 
 get_permission_query_conditions = get_permission_query_conditions_for_doctype("Subscription")
+
+
+def subscriptions_missing_usage_record(date: DF.Date | None = None) -> list[str]:
+	"""Daily subscriptions that should have a usage record for `date` (default: yesterday) and do not.
+
+	Subscriptions on plans that cost nothing (Trial, Unlimited) and sites with free hosting never
+	get a usage record, on purpose, so they are not listed here.
+	"""
+	date = date or frappe.utils.add_days(frappe.utils.today(), -1)
+	free_sites = sites_with_free_hosting()
+	candidates = frappe.get_all(
+		"Subscription",
+		filters={
+			"enabled": True,
+			"interval": "Daily",
+			"plan": ("in", paid_plans()),
+			"name": ("not in", created_usage_records(free_sites, date=date) or [""]),
+			"document_name": ("not in", free_sites or [""]),
+		},
+		pluck="name",
+		order_by=None,
+		ignore_ifnull=True,
+	)
+	missing = []
+	for name in candidates:
+		subscription = frappe.get_doc("Subscription", name)
+		# Same rules the job applies, so a subscription it skips by design is not reported
+		if subscription.can_charge_for_subscription() and subscription.is_valid_subscription(date):
+			missing.append(name)
+	return missing
+
+
+def check_missing_usage_records():
+	"""Daily self-check. A gap shows up in the Error Log within a day."""
+	missing = subscriptions_missing_usage_record()
+	if missing:
+		log_error(
+			title="Missing Usage Records",
+			message=f"No usage record for yesterday: {', '.join(missing)}",
+		)
