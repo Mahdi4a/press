@@ -121,6 +121,31 @@ class TestMarketplaceApp(FrappeTestCase):
 		)
 
 	@patch("press.press.doctype.marketplace_app.marketplace_app.app")
+	def test_validate_frappe_version_does_not_hand_the_access_token_over_as_an_installation(
+		self, github_app: Mock
+	):
+		"""Regression: with a github_access_token in Press Settings and no installation, the token was
+		passed to `app` as the installation id, so `app` tried to sign a GitHub App JWT and crashed
+		with AttributeError because no GitHub App private key is set."""
+		github_app.return_value = {"name": "x", "title": "X", "frappe_version": ">=16.0.0,<17.0.0"}
+		frappe.db.set_single_value("Press Settings", "github_access_token", "ghp_not_an_installation")
+
+		validate_frappe_version_for_branch(
+			app_name="x", owner="o", repository="r", branch="main", version="Version 16"
+		)
+		self.assertIsNone(github_app.call_args.kwargs["installation"])
+
+		validate_frappe_version_for_branch(
+			app_name="x",
+			owner="o",
+			repository="r",
+			branch="main",
+			version="Version 16",
+			github_installation_id="12345",
+		)
+		self.assertEqual(github_app.call_args.kwargs["installation"], "12345")
+
+	@patch("press.press.doctype.marketplace_app.marketplace_app.app")
 	def test_validate_frappe_version_rejects_a_branch_that_does_not_support_the_version(
 		self, github_app: Mock
 	):

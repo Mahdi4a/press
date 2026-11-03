@@ -798,13 +798,14 @@ def validate_frappe_version_for_branch(
 	"""Check if the version being added is supported by the branch comparing the frappe versions in pyproject.toml
 	Only check for lower bounds major version compatibility in case `ease_versioning_constrains` is set to True
 	"""
+	# Without an installation, `app` falls back to the access token of Press Settings itself.
+	# The token is not an installation id: handing it over as one made `app` sign a GitHub App
+	# JWT, which fails on a site that has the token but no GitHub App.
 	app_info = app(
 		owner=owner,
 		repository=repository,
 		branch=branch,
-		installation=github_installation_id
-		if github_installation_id
-		else frappe.get_value("Press Settings", None, "github_access_token"),
+		installation=github_installation_id,
 	)
 	frappe_version = app_info.get("frappe_version")
 	if frappe_version is None:
