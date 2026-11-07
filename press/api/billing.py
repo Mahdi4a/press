@@ -464,6 +464,8 @@ def get_unpaid_invoices():
 @frappe.whitelist()
 @role_guard.api("billing")
 def change_payment_mode(mode):
+	if mode not in ("Prepaid Credits", "Paid By Partner"):
+		frappe.throw(_("Only credits can be used to pay."))
 	team = get_current_team(get_doc=True)
 	team.reload()
 	team.payment_mode = mode

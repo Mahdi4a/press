@@ -90,11 +90,6 @@ export const index = computed(() => {
 				},
 				{ name: 'Balances', route: '/billing/balances', icon: LucideWeight },
 				{
-					name: 'Payment Methods',
-					route: '/billing/payment-methods',
-					icon: LucideCreditCard,
-				},
-				{
 					name: 'Marketplace Payouts',
 					route: '/billing/payouts',
 					icon: LucideStore,

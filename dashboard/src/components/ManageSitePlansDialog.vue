@@ -309,8 +309,7 @@ export default {
 			return getCachedDocumentResource('Site', this.site);
 		},
 		downgradeLockTitle() {
-			const price = this.$format.teamCurrency(DOWNGRADE_LOCK_PRICE_USD, 'USD', 0);
-			return `Plans priced ${price}/mo or above can't be downgraded for 30 days from the date of upgrade.`;
+			return "This plan can't be downgraded for 30 days from the date of upgrade.";
 		},
 		showDowngradeLockNotice() {
 			// Warn when upgrading to a $50/mo-or-above plan (locked from downgrade for 30 days).

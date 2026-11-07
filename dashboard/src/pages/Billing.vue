@@ -44,7 +44,6 @@ export default {
 				{ label: 'Forecast', route: { name: 'BillingForecast' } },
 				{ label: 'Invoices', route: { name: 'BillingInvoices' } },
 				{ label: 'Balances', route: { name: 'BillingBalances' } },
-				{ label: 'Payment Methods', route: { name: 'BillingPaymentMethods' } },
 				{
 					label: 'Marketplace Payouts',
 					route: { name: 'BillingMarketplacePayouts' },
@@ -57,7 +56,7 @@ export default {
 
 			// Add UPI Autopay tab for INR teams (before Marketplace Payouts)
 			if (this.$team?.doc?.currency === 'INR') {
-				baseTabs.splice(6, 0, {
+				baseTabs.splice(5, 0, {
 					label: 'UPI Autopay',
 					route: { name: 'BillingUPIAutopay' },
 				})

@@ -490,6 +490,7 @@ class Team(Document):
 			get_toman_limit("default_spending_limit_irt") if currency_for_country(country) == "IRT" else 100
 		)
 		team.tier = "Beginner"
+		team.payment_mode = "Prepaid Credits"
 		team.insert(ignore_permissions=True, ignore_links=True)
 		team.append("team_members", {"user": user.name})
 		if account_request.invited_by_parent_team:
@@ -640,6 +641,7 @@ class Team(Document):
 			# This check to verify recent pending payment is added to avoid validation issue when updating team doctype with payment mode as credits without balance as transaction is on going
 			if (
 				self.payment_mode == "Prepaid Credits"
+				and not self.flags.in_insert
 				and self.get_balance() <= 0
 				and not self.has_recent_pending_payment()
 			):

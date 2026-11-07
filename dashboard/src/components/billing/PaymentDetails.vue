@@ -264,17 +264,6 @@ const billingDetailsSummary = computed(() => {
 
 const paymentModeOptions = [
 	{
-		label: 'Card',
-		value: 'Card',
-		description: 'Your card will be charged for monthly subscription',
-		component: () =>
-			h(DropdownItem, {
-				label: 'Card',
-				active: team.doc.payment_mode === 'Card',
-				onClick: () => updatePaymentMode('Card'),
-			}),
-	},
-	{
 		label: 'Prepaid credits',
 		value: 'Prepaid Credits',
 		description:
